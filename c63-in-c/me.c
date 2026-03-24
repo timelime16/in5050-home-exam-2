@@ -154,23 +154,17 @@ static void mc_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   /* Copy block from ref mandated by MV */
   uint8x8_t _r0, _r1, _r2, _r3, _r4, _r5, _r6, _r7;
 
-  _r0 = vld1_u8(ref + (top + mb->mv_y) * w + left); 
-  _r1 = vld1_u8(ref + (top + 1 + mb->mv_y) * w + left); 
-  _r2 = vld1_u8(ref + (top + 2 + mb->mv_y) * w + left);  
-  _r3 = vld1_u8(ref + (top + 3 + mb->mv_y) * w + left); 
-  _r4 = vld1_u8(ref + (top + 4 + mb->mv_y) * w + left);  
-  _r5 = vld1_u8(ref + (top + 5 + mb->mv_y) * w + left); 
-  _r6 = vld1_u8(ref + (top + 6 + mb->mv_y) * w + left); 
-  _r7 = vld1_u8(ref + (top + 7 + mb->mv_y) * w + left); 
+  uint8_t *dst_base = predicted + top * w + left;
+  uint8_t *src_base = ref + (top + mb->mv_y) * w + left + mb->mv_x;
 
-  vst1_u8(predicted, _r0);
-  vst1_u8(predicted + w, _r1);
-  vst1_u8(predicted + 2 * w, _r2);
-  vst1_u8(predicted + 3 * w, _r3);
-  vst1_u8(predicted + 4 * w, _r4);
-  vst1_u8(predicted + 5 * w, _r5);
-  vst1_u8(predicted + 6 * w, _r6);
-  vst1_u8(predicted + 7 * w, _r7);
+  _r0 = vld1_u8(src_base);         vst1_u8(dst_base, _r0);
+  _r1 = vld1_u8(src_base + w);     vst1_u8(dst_base + w, _r1);
+  _r2 = vld1_u8(src_base + 2 * w); vst1_u8(dst_base + 2 * w, _r2);
+  _r3 = vld1_u8(src_base + 3 * w); vst1_u8(dst_base + 3 * w, _r3);
+  _r4 = vld1_u8(src_base + 4 * w); vst1_u8(dst_base + 4 * w, _r4);
+  _r5 = vld1_u8(src_base + 5 * w); vst1_u8(dst_base + 5 * w, _r5);
+  _r6 = vld1_u8(src_base + 6 * w); vst1_u8(dst_base + 6 * w, _r6);
+  _r7 = vld1_u8(src_base + 7 * w); vst1_u8(dst_base + 7 * w, _r7);
 }
 
 void c63_motion_compensate(struct c63_common *cm)
