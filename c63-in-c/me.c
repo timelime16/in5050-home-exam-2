@@ -51,13 +51,9 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   _r0 = vld1_u8(orig); _r1 = vld1_u8(orig + w); _r2 = vld1_u8(orig + 2*w); _r3 = vld1_u8(orig + 3*w);
   _r4 = vld1_u8(orig + 4*w); _r5 = vld1_u8(orig + 5*w); _r6 = vld1_u8(orig + 6*w); _r7 = vld1_u8(orig + 7*w);
 
-  uint8x16_t _or0, _or1, _or2, _or3; // [r0 | r1] 16 pixels in one register
-  _or0 = vcombine_u8(_r0, _r1); _or1 = vcombine_u8(_r2, _r3); _or2 = vcombine_u8(_r4, _r5); _or3 = vcombine_u8(_r6, _r7);
+  uint8x8_t _rr0, _rr1, _rr2, _rr3, _rr4, _rr5, _rr6, _rr7; // for ref block
 
-  uint8x16_t _rr0, _rr1, _rr2, _rr3; // for ref block
-
-  uint8x16_t _diff;
-  uint16x8_t _sum, _acc;
+  uint16x8_t _acc;
 
   uint32_t best_sad = UINT_MAX;
 
@@ -69,27 +65,18 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
       _acc = vdupq_n_u16(0); // Init acc
 
       uint8_t *calc_ref = ref + y*w+x;
-      _r0 = vld1_u8(calc_ref); _r1 = vld1_u8(calc_ref + w); _r2 = vld1_u8(calc_ref + 2*w); _r3 = vld1_u8(calc_ref + 3*w);
-      _r4 = vld1_u8(calc_ref + 4*w); _r5 = vld1_u8(calc_ref + 5*w); _r6 = vld1_u8(calc_ref + 6*w); _r7 = vld1_u8(calc_ref + 7*w);
-
-      _rr0 = vcombine_u8(_r0, _r1); _rr1 = vcombine_u8(_r2, _r3); _rr2 = vcombine_u8(_r4, _r5); _rr3 = vcombine_u8(_r6, _r7); // combine
+      _rr0 = vld1_u8(calc_ref); _rr1 = vld1_u8(calc_ref + w); _rr2 = vld1_u8(calc_ref + 2*w); _rr3 = vld1_u8(calc_ref + 3*w);
+      _rr4 = vld1_u8(calc_ref + 4*w); _rr5 = vld1_u8(calc_ref + 5*w); _rr6 = vld1_u8(calc_ref + 6*w); _rr7 = vld1_u8(calc_ref + 7*w);
 
       // calculate 
-      _diff = vabdq_u8(_or0, _rr0); // abs diff
-      _sum = vpaddlq_u8(_diff); // pairwise addition in a register
-      _acc = vaddq_u16(_acc, _sum); // accumulated sum
-
-      _diff = vabdq_u8(_or1, _rr1); 
-      _sum = vpaddlq_u8(_diff);
-      _acc = vaddq_u16(_acc, _sum);
-
-      _diff = vabdq_u8(_or2, _rr2);
-      _sum = vpaddlq_u8(_diff);
-      _acc = vaddq_u16(_acc, _sum);
-
-      _diff = vabdq_u8(_or3, _rr3); 
-      _sum = vpaddlq_u8(_diff);
-      _acc = vaddq_u16(_acc, _sum);
+      _acc = vabal_u8(_acc, _r0, _rr0);
+      _acc = vabal_u8(_acc, _r1, _rr1);
+      _acc = vabal_u8(_acc, _r2, _rr2);
+      _acc = vabal_u8(_acc, _r3, _rr3);
+      _acc = vabal_u8(_acc, _r4, _rr4);
+      _acc = vabal_u8(_acc, _r5, _rr5);
+      _acc = vabal_u8(_acc, _r6, _rr6);
+      _acc = vabal_u8(_acc, _r7, _rr7);
 
       uint32_t sad = vaddvq_u16(_acc); // compare 
       if (sad < best_sad)
@@ -104,8 +91,8 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   /* Here, there should be a threshold on SAD that checks if the motion vector
      is cheaper than intraprediction. We always assume MV to be beneficial */
 
-  // printf("Using motion vector (%d, %d) with SAD %d\n", mb->mv_x, mb->mv_y,
-  //    best_sad);
+  printf("Using motion vector (%d, %d) with SAD %d\n", mb->mv_x, mb->mv_y,
+     best_sad);
 
   mb->use_mv = 1;
 }
