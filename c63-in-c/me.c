@@ -66,7 +66,8 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
     for (x = left; x < right; ++x)
     {
       // Load ref block
-      // Load ref block
+      _acc = vdupq_n_u16(0); // Init acc
+
       uint8_t *calc_ref = ref + y*w+x;
       _r0 = vld1_u8(calc_ref); _r1 = vld1_u8(calc_ref + w); _r2 = vld1_u8(calc_ref + 2*w); _r3 = vld1_u8(calc_ref + 3*w);
       _r4 = vld1_u8(calc_ref + 4*w); _r5 = vld1_u8(calc_ref + 5*w); _r6 = vld1_u8(calc_ref + 6*w); _r7 = vld1_u8(calc_ref + 7*w);
