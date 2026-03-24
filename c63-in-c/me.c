@@ -80,7 +80,7 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
 
       _diff = vabdq_u8(_or1, _rr1); 
       _acc = vaddq_u16(_acc, vpaddlq_u8(_diff));
-      if (vaddvq_u16(_acc) >= best_sad) break; // early termination
+      if (vaddvq_u16(_acc) >= best_sad) continue; // early termination
 
       _diff = vabdq_u8(_or2, _rr2);
       _acc = vaddq_u16(_acc, vpaddlq_u8(_diff));
