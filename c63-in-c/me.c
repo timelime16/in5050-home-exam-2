@@ -58,7 +58,6 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
 
   uint8x16_t _diff;
   uint16x8_t _sum, _acc;
-  _acc = vdupq_n_u16(0);
 
   uint32_t best_sad = UINT_MAX;
 
@@ -73,6 +72,7 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
 
       _rr0 = vcombine_u8(_r0, _r1); _rr1 = vcombine_u8(_r2, _r3); _rr2 = vcombine_u8(_r4, _r5); _rr3 = vcombine_u8(_r6, _r7); // combine
 
+      _acc = vdupq_n_u16(0); // reset _acc
       // calculate 
       _diff = vabdq_u8(_or0, _rr0); // abs diff
       _sum = vpaddlq_u8(_diff); // pairwise addition in a register
