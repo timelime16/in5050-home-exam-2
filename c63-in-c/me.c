@@ -101,8 +101,8 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   /* Here, there should be a threshold on SAD that checks if the motion vector
      is cheaper than intraprediction. We always assume MV to be beneficial */
 
-  printf("Using motion vector (%d, %d) with SAD %d\n", mb->mv_x, mb->mv_y,
-     best_sad);
+  // printf("Using motion vector (%d, %d) with SAD %d\n", mb->mv_x, mb->mv_y,
+  //    best_sad);
 
   mb->use_mv = 1;
 }
@@ -160,7 +160,7 @@ static void mc_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   _r5 = vld1_u8(ref + (top + 5 + mb->mv_y) * w + left); 
   _r6 = vld1_u8(ref + (top + 6 + mb->mv_y) * w + left); 
   _r7 = vld1_u8(ref + (top + 7 + mb->mv_y) * w + left); 
-  
+
   vst1_u8(predicted, _r0);
   vst1_u8(predicted + w, _r1);
   vst1_u8(predicted + 2 * w, _r2);
