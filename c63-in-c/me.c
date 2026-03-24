@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <arm_neon.h>
+
 #include "dsp.h"
 #include "me.h"
 
@@ -43,17 +45,52 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   int mx = mb_x * 8;
   int my = mb_y * 8;
 
-  int best_sad = INT_MAX;
+  // Load orig block [r0 | r1] 16 pixels in one register
+  orig = orig + my*w+mx;
+  uint8x8_t _r0, _r1, _r2, _r3, _r4, _r5, _r6, _r7;
+  _r0 = vld1_u8(orig); _r1 = vld1_u8(orig + w); _r2 = vld1_u8(orig + 2*w); _r3 = vld1_u8(orig + 3*w);
+  _r4 = vld1_u8(orig + 4*w); _r5 = vld1_u8(orig + 5*w); _r6 = vld1_u8(orig + 6*w); _r7 = vld1_u8(orig + 7*w);
+
+  uint8x16_t _or0, _or1, _or2, _or3; // [r0 | r1] 16 pixels in one register
+  _or0 = vcombine_u8(_r0, _r1); _or1 = vcombine_u8(_r2, _r3); _or2 = vcombine_u8(_r4, _r5); _or3 = vcombine_u8(_r6, _r7);
+
+  uint8x16_t _rr0, _rr1, _rr2, _rr3; // for ref block
+
+  uint8x16_t _diff;
+  uint16x8_t _sum, _acc;
+  _acc = vdupq_n_u16(0);
+
+  uint32_t best_sad = UINT_MAX;
 
   for (y = top; y < bottom; ++y)
   {
     for (x = left; x < right; ++x)
     {
-      int sad;
-      sad_block_8x8(orig + my*w+mx, ref + y*w+x, w, &sad);
+      // Load ref block
+      uint8_t *calc_ref = ref + y*w+x;
+      _r0 = vld1_u8(calc_ref); _r1 = vld1_u8(calc_ref + w); _r2 = vld1_u8(calc_ref + 2*w); _r3 = vld1_u8(calc_ref + 3*w);
+      _r4 = vld1_u8(calc_ref + 4*w); _r5 = vld1_u8(calc_ref + 5*w); _r6 = vld1_u8(calc_ref + 6*w); _r7 = vld1_u8(calc_ref + 7*w);
 
-      /* printf("(%4d,%4d) - %d\n", x, y, sad); */
+      _rr0 = vcombine_u8(_r0, _r1); _rr1 = vcombine_u8(_r2, _r3); _rr2 = vcombine_u8(_r4, _r5); _rr3 = vcombine_u8(_r6, _r7); // combine
 
+      // calculate 
+      _diff = vabdq_u8(_or0, _rr0); // abs diff
+      _sum = vpaddlq_u8(_diff); // pairwise addition in a register
+      _acc = vaddq_u16(_acc, _sum); // accumulated sum
+
+      _diff = vabdq_u8(_or1, _rr1); 
+      _sum = vpaddlq_u8(_diff);
+      _acc = vaddq_u16(_acc, _sum);
+
+      _diff = vabdq_u8(_or2, _rr2);
+      _sum = vpaddlq_u8(_diff);
+      _acc = vaddq_u16(_acc, _sum);
+
+      _diff = vabdq_u8(_or3, _rr3); 
+      _sum = vpaddlq_u8(_diff);
+      _acc = vaddq_u16(_acc, _sum);
+
+      uint32_t sad = vaddvq_u16(_acc); // compare 
       if (sad < best_sad)
       {
         mb->mv_x = x - mx;
