@@ -88,8 +88,6 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
       _diff = vabdq_u8(_or3, _rr3); 
       _acc = vaddq_u16(_acc, vpaddlq_u8(_diff));
 
-      uint32_t sad = vaddvq_u16(_acc);
-
       uint32_t sad = vaddvq_u16(_acc); // compare 
       if (sad < best_sad)
       {
