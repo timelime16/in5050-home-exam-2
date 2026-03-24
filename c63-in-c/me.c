@@ -57,6 +57,7 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   uint8x16_t _rr0, _rr1, _rr2, _rr3; // for ref block
 
   uint8x16_t _diff;
+  uint16x8_t _acc;
 
   uint32_t best_sad = UINT_MAX;
 
@@ -64,7 +65,6 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   {
     for (x = left; x < right; ++x)
     {
-      uint32_t sad = 0;
       // Load ref block
       uint8_t *calc_ref = ref + y*w+x;
       _r0 = vld1_u8(calc_ref); _r1 = vld1_u8(calc_ref + w); _r2 = vld1_u8(calc_ref + 2*w); _r3 = vld1_u8(calc_ref + 3*w);
@@ -72,22 +72,23 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
 
       _rr0 = vcombine_u8(_r0, _r1); _rr1 = vcombine_u8(_r2, _r3); _rr2 = vcombine_u8(_r4, _r5); _rr3 = vcombine_u8(_r6, _r7); // combine
 
+      _acc = vdupq_n_u16(0);
+
       // calculate 
       _diff = vabdq_u8(_or0, _rr0); // abs diff
-      sad += vaddvq_u8(_diff); // sum
-      if (sad >= best_sad) break; // early termination
+      _acc = vaddq_u16(_acc, vpaddlq_u8(_diff)); // sum
 
       _diff = vabdq_u8(_or1, _rr1); 
-      sad += vaddvq_u8(_diff);
-      if (sad >= best_sad) break;
+      _acc = vaddq_u16(_acc, vpaddlq_u8(_diff));
+      if (vaddvq_u16(_acc) >= best_sad) break; // early termination
 
       _diff = vabdq_u8(_or2, _rr2);
-      sad += vaddvq_u8(_diff);
-      if (sad >= best_sad) break;
+      _acc = vaddq_u16(_acc, vpaddlq_u8(_diff));
 
       _diff = vabdq_u8(_or3, _rr3); 
-      sad += vaddvq_u8(_diff);
+      _acc = vaddq_u16(_acc, vpaddlq_u8(_diff));
 
+      uint32_t sad = vaddvq_u16(_acc);
       if (sad < best_sad)
       {
         mb->mv_x = x - mx;
