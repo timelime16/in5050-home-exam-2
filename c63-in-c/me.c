@@ -65,17 +65,30 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
       _acc = vdupq_n_u16(0); // Init acc
 
       uint8_t *calc_ref = ref + y*w+x;
-      _rr0 = vld1_u8(calc_ref); _rr1 = vld1_u8(calc_ref + w); _rr2 = vld1_u8(calc_ref + 2*w); _rr3 = vld1_u8(calc_ref + 3*w);
-      _rr4 = vld1_u8(calc_ref + 4*w); _rr5 = vld1_u8(calc_ref + 5*w); _rr6 = vld1_u8(calc_ref + 6*w); _rr7 = vld1_u8(calc_ref + 7*w);
 
       // calculate 
+      _rr0 = vld1_u8(calc_ref); 
       _acc = vabal_u8(_acc, _r0, _rr0);
+
+      _rr1 = vld1_u8(calc_ref + w); 
       _acc = vabal_u8(_acc, _r1, _rr1);
+
+      _rr2 = vld1_u8(calc_ref + 2*w); 
       _acc = vabal_u8(_acc, _r2, _rr2);
+
+      _rr3 = vld1_u8(calc_ref + 3*w);
       _acc = vabal_u8(_acc, _r3, _rr3);
+
+      _rr4 = vld1_u8(calc_ref + 4*w); 
       _acc = vabal_u8(_acc, _r4, _rr4);
+
+      _rr5 = vld1_u8(calc_ref + 5*w);
       _acc = vabal_u8(_acc, _r5, _rr5);
+
+      _rr6 = vld1_u8(calc_ref + 6*w); 
       _acc = vabal_u8(_acc, _r6, _rr6);
+      
+      _rr7 = vld1_u8(calc_ref + 7*w);
       _acc = vabal_u8(_acc, _r7, _rr7);
 
       uint32_t sad = vaddvq_u16(_acc); // compare 
