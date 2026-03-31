@@ -118,7 +118,7 @@ int main(void)
     #pragma unroll
     for (int i = 0; i < 8; ++i) 
     {
-        dct_1d(A[0], C[0], B);
+        dct_1d(A[i], C[i], B);
     }
     printf("Correct answer:\n");
     for (int i = 0; i < 8; ++i) 
