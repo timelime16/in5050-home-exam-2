@@ -44,7 +44,7 @@ static inline void transpose(float16_t *A)
 
 int main(void) 
 {
-    float A[8*8] =
+    float16_t A[8*8] =
     {
     1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
     1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
@@ -56,6 +56,13 @@ int main(void)
     1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f
     };
 
+    for (int i = 0; i < 64; ++i) 
+    {
+        printf("%f ", A[i]);
+        if (i > 0 && (i % 8) == 0) printf("\n");
+    }
+    printf("\n");
+
     transpose(A);
 
     for (int i = 0; i < 64; ++i) 
@@ -63,4 +70,5 @@ int main(void)
         printf("%f ", A[i]);
         if (i > 0 && (i % 8) == 0) printf("\n");
     }
+    printf("\n");
 }
