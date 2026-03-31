@@ -105,7 +105,7 @@ int main(void)
     // }
     // printf("\n");
 
-    float A[8][8], B[8][8], C[8][8];
+    float16_t A[8][8], B[8][8], C[8][8];
     for (int i = 0; i < 8; ++i) 
     {
         for (int j = 0; j < 8; ++j) 
@@ -119,7 +119,7 @@ int main(void)
     printf("Correct answer: ");
     for (int i = 0; i < 8; ++i) 
     {
-        printf("%f ", C[0][i]);
+        printf("%f ", (float)C[0][i]);
     }
     printf("\n");
 
@@ -136,7 +136,7 @@ int main(void)
     printf("My answer: ");
     for (int i = 0; i < 8; ++i) 
     {
-        printf("%f ", C[0][i]);
+        printf("%f ", (float)C[0][i]);
     }
     printf("\n");
 }
