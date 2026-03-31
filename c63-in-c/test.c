@@ -115,7 +115,7 @@ int main(void)
         }
     }
 
-    dct_1d(A, C, B);
+    dct_1d(A[0], C[0], B);
     printf("Correct answer: ");
     for (int i = 0; i < 8; ++i) 
     {
