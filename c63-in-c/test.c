@@ -34,7 +34,7 @@ static inline void transpose(float16_t *A)
     vst1q_f16(A, b0);
     vst1q_f16(A+8, b1);
     vst1q_f16(A+2*8, b2);
-    vst1q_f16(A+2*8, b3);
+    vst1q_f16(A+3*8, b3);
     vst1q_f16(A+4*8, b4);
     vst1q_f16(A+5*8, b5);
     vst1q_f16(A+6*8, b6);
@@ -58,7 +58,7 @@ int main(void)
 
     for (int i = 0; i < 64; ++i) 
     {
-        printf("%f ", A[i]);
+        printf("%f ", (float)A[i]);
         if ((i % 8) == 7) printf("\n");
     }
     printf("\n");
@@ -67,8 +67,8 @@ int main(void)
 
     for (int i = 0; i < 64; ++i) 
     {
-        printf("%f ", A[i]);
-        if (i > 0 && (i % 8) == 0) printf("\n");
+        printf("%f ", (float)A[i]);
+        if ((i % 8) == 7) printf("\n");
     }
     printf("\n");
 }
