@@ -115,15 +115,30 @@ int main(void)
         }
     }
 
-    dct_1d(A[0], C[0], B);
-    printf("Correct answer: ");
+    #pragma unroll
     for (int i = 0; i < 8; ++i) 
     {
-        printf("%f ", (float)C[0][i]);
+        dct_1d(A[0], C[0], B);
+    }
+    printf("Correct answer:\n");
+    for (int i = 0; i < 8; ++i) 
+    {
+        for (int j = 0; j < 8; ++j) 
+        {
+            printf("%f ", (float)C[i][j]);
+        }
+        printf("\n");
     }
     printf("\n");
 
     float16x8_t a0 = vld1q_f16(A[0]);
+    float16x8_t a1 = vld1q_f16(A[1]);
+    float16x8_t a2 = vld1q_f16(A[2]);
+    float16x8_t a3 = vld1q_f16(A[3]);
+    float16x8_t a4 = vld1q_f16(A[4]);
+    float16x8_t a5 = vld1q_f16(A[5]);
+    float16x8_t a6 = vld1q_f16(A[6]);
+    float16x8_t a7 = vld1q_f16(A[7]);
     float16x8x4_t dct1, dct2;
     #pragma unroll
     for (int i = 0; i < 4; ++i) 
@@ -132,11 +147,29 @@ int main(void)
         dct2.val[i] = vld1q_f16(B + (i+4)*8);
     }
     float16x8_t c0 = row_mat_mul(a0, dct1, dct2);
+    float16x8_t c1 = row_mat_mul(a1, dct1, dct2);
+    float16x8_t c2 = row_mat_mul(a2, dct1, dct2);
+    float16x8_t c3 = row_mat_mul(a3, dct1, dct2);
+    float16x8_t c4 = row_mat_mul(a4, dct1, dct2);
+    float16x8_t c5 = row_mat_mul(a5, dct1, dct2);
+    float16x8_t c6 = row_mat_mul(a6, dct1, dct2);
+    float16x8_t c7 = row_mat_mul(a7, dct1, dct2);
     vst1q_f16(C[0], c0);
-    printf("My answer: ");
+    vst1q_f16(C[1], c1);
+    vst1q_f16(C[2], c2);
+    vst1q_f16(C[3], c3);
+    vst1q_f16(C[4], c4);
+    vst1q_f16(C[5], c5);
+    vst1q_f16(C[6], c6);
+    vst1q_f16(C[7], c7);
+    printf("My answer:\n");
     for (int i = 0; i < 8; ++i) 
     {
-        printf("%f ", (float)C[0][i]);
+        for (int j = 0; j < 8; ++j) 
+        {
+            printf("%f ", (float)C[i][j]);
+        }
+        printf("\n");
     }
     printf("\n");
 }
