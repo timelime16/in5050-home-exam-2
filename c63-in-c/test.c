@@ -1,7 +1,7 @@
 #include <arm_neon.h>
 #include <stdio.h>
 
-static void dct_1d(float *in_data, float *out_data, float **dctlookup)
+static void dct_1d(float16_t *in_data, float16_t *out_data, float16_t *dctlookup)
 {
   int i, j;
 
@@ -11,7 +11,7 @@ static void dct_1d(float *in_data, float *out_data, float **dctlookup)
 
     for (j = 0; j < 8; ++j)
     {
-      dct += in_data[j] * dctlookup[j][i];
+      dct += in_data[j] * dctlookup[j*8+i];
     }
 
     out_data[i] = dct;
