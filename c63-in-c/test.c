@@ -64,6 +64,6 @@ int main(void)
         {
             printf("%f ", A[i][j]);
         }
-        print("\n");
+        printf("\n");
     }
 }
