@@ -1,6 +1,39 @@
 #include <arm_neon.h>
 #include <stdio.h>
 
+static void dct_1d(float *in_data, float *out_data, float **dctlookup)
+{
+  int i, j;
+
+  for (i = 0; i < 8; ++i)
+  {
+    float dct = 0;
+
+    for (j = 0; j < 8; ++j)
+    {
+      dct += in_data[j] * dctlookup[j][i];
+    }
+
+    out_data[i] = dct;
+  }
+}
+
+static inline float16x8_t row_mat_mul(float16x8_t row, float16x8x4_t mat1, float16x8x4_t mat2) 
+{
+  float16x8_t buf1, buf2;
+
+  buf1 = vdupq_n_f16(0.0f);
+  buf2 = vdupq_n_f16(0.0f);
+
+  #pragma unroll
+  for (int i = 0; i < 4; ++i) 
+  {
+    buf1 = vfmaq_laneq_f16(buf1, mat1.val[i], row, i);
+    buf2 = vfmaq_laneq_f16(buf2, mat2.val[i], row, i+4);
+  }
+  return vaddq_f16(buf1, buf2);
+}
+
 static inline void transpose(float16_t *A) 
 {
 
@@ -44,31 +77,66 @@ static inline void transpose(float16_t *A)
 
 int main(void) 
 {
-    float16_t A[8*8] =
-    {
-    1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f
-    };
+    // float16_t A[8*8] =
+    // {
+    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
+    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
+    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
+    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
+    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
+    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
+    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
+    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f
+    // };
 
-    for (int i = 0; i < 64; ++i) 
+    // for (int i = 0; i < 64; ++i) 
+    // {
+    //     printf("%f ", (float)A[i]);
+    //     if ((i % 8) == 7) printf("\n");
+    // }
+    // printf("\n");
+
+    // transpose(A);
+
+    // for (int i = 0; i < 64; ++i) 
+    // {
+    //     printf("%f ", (float)A[i]);
+    //     if ((i % 8) == 7) printf("\n");
+    // }
+    // printf("\n");
+
+    float A[8][8], B[8][8], C[8][8];
+    for (int i = 0; i < 8; ++i) 
     {
-        printf("%f ", (float)A[i]);
-        if ((i % 8) == 7) printf("\n");
+        for (int j = 0; j < 8; ++j) 
+        {
+            A[i][j] = i*8+j;
+            B[i][j] = i*8+j;
+        }
+    }
+
+    dct_1d(A, C, B);
+    printf("Correct answer: ");
+    for (int i = 0; i < 8; ++i) 
+    {
+        printf("%f ", C[0][i]);
     }
     printf("\n");
 
-    transpose(A);
-
-    for (int i = 0; i < 64; ++i) 
+    float16x8_t a0 = vld1q_f16(A);
+    float16x8x4_t dct1, dct2;
+    #pragma unroll
+    for (int i = 0; i < 4; ++i) 
     {
-        printf("%f ", (float)A[i]);
-        if ((i % 8) == 7) printf("\n");
+        dct1.val[i] = vld1q_f16(B[i]);
+        dct2.val[i] = vld1q_f16(B[i+4]);
+    }
+    float16x8_t c0 = row_mat_mul(a0, dct1, dct2);
+    vst1q_f16(C, c0);
+    printf("My answer: ");
+    for (int i = 0; i < 8; ++i) 
+    {
+        printf("%f ", C[0][i]);
     }
     printf("\n");
 }
