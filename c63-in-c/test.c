@@ -123,7 +123,7 @@ int main(void)
     }
     printf("\n");
 
-    float16x8_t a0 = vld1q_f16(A);
+    float16x8_t a0 = vld1q_f16(A[0]);
     float16x8x4_t dct1, dct2;
     #pragma unroll
     for (int i = 0; i < 4; ++i) 
@@ -132,7 +132,7 @@ int main(void)
         dct2.val[i] = vld1q_f16(B[i+4]);
     }
     float16x8_t c0 = row_mat_mul(a0, dct1, dct2);
-    vst1q_f16(C, c0);
+    vst1q_f16(C[0], c0);
     printf("My answer: ");
     for (int i = 0; i < 8; ++i) 
     {
