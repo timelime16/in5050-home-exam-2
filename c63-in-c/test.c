@@ -59,7 +59,7 @@ int main(void)
     for (int i = 0; i < 64; ++i) 
     {
         printf("%f ", A[i]);
-        if (i > 0 && (i % 8) == 0) printf("\n");
+        if ((i % 8) == 7) printf("\n");
     }
     printf("\n");
 
