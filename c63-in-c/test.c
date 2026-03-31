@@ -105,13 +105,14 @@ int main(void)
     // }
     // printf("\n");
 
-    float16_t A[8][8], B[64], C[8][8];
+    float16_t A[8][8], B[64], BT[8][8], C[8][8];
     for (int i = 0; i < 8; ++i) 
     {
         for (int j = 0; j < 8; ++j) 
         {
             A[i][j] = i*8+j;
             B[i*8+j] = i*8+j;
+            BT[i][j] = i*8+j;
         }
     }
 
@@ -125,11 +126,12 @@ int main(void)
 
     float16x8_t a0 = vld1q_f16(A[0]);
     float16x8x4_t dct1, dct2;
+    transpose(BT);
     #pragma unroll
     for (int i = 0; i < 4; ++i) 
     {
-        dct1.val[i] = vld1q_f16(B + i);
-        dct2.val[i] = vld1q_f16(B + i + 4);
+        dct1.val[i] = vld1q_f16(BT[i]);
+        dct2.val[i] = vld1q_f16(BT[i+ 4]);
     }
     float16x8_t c0 = row_mat_mul(a0, dct1, dct2);
     vst1q_f16(C[0], c0);
