@@ -129,7 +129,7 @@ int main(void)
     for (int i = 0; i < 4; ++i) 
     {
         dct1.val[i] = vld1q_f16(B + i);
-        dct2.val[i] = vld1q_f16(B + 4*8);
+        dct2.val[i] = vld1q_f16(B + (i+4)*8);
     }
     float16x8_t c0 = row_mat_mul(a0, dct1, dct2);
     vst1q_f16(C[0], c0);
