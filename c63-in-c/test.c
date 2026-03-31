@@ -1,4 +1,5 @@
 #include <arm_neon.h>
+#include <stdio.h>
 
 static inline void transpose(float16_t **A) 
 {
