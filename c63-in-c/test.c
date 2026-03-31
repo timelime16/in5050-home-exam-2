@@ -128,7 +128,7 @@ int main(void)
     #pragma unroll
     for (int i = 0; i < 4; ++i) 
     {
-        dct1.val[i] = vld1q_f16(B + i);
+        dct1.val[i] = vld1q_f16(B + i*8);
         dct2.val[i] = vld1q_f16(B + (i+4)*8);
     }
     float16x8_t c0 = row_mat_mul(a0, dct1, dct2);
