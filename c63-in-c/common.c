@@ -101,10 +101,10 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
     p7 = vld1q_s16((int16_t *)(prediction + x + 7*w));
 
     // block[i*8+j] = ((int16_t)in_data[i*w+j+x] - prediction[i*w+j+x])
-    b0 = vcvtq_f16_u16(vsubq_s16(in0, p0)); b1 = vcvtq_f16_u16(vsubq_s16(in1, p1)); 
-    b2 = vcvtq_f16_u16(vsubq_s16(in2, p2)); b3 = vcvtq_f16_u16(vsubq_s16(in3, p3));
-    b4 = vcvtq_f16_u16(vsubq_s16(in4, p4)); b5 = vcvtq_f16_u16(vsubq_s16(in5, p5)); 
-    b6 = vcvtq_f16_u16(vsubq_s16(in6, p6)); b7 = vcvtq_f16_u16(vsubq_s16(in7, p7));
+    b0 = vcvtq_f16_s16(vsubq_s16(in0, p0)); b1 = vcvtq_f16_s16(vsubq_s16(in1, p1)); 
+    b2 = vcvtq_f16_s16(vsubq_s16(in2, p2)); b3 = vcvtq_f16_s16(vsubq_s16(in3, p3));
+    b4 = vcvtq_f16_s16(vsubq_s16(in4, p4)); b5 = vcvtq_f16_s16(vsubq_s16(in5, p5)); 
+    b6 = vcvtq_f16_s16(vsubq_s16(in6, p6)); b7 = vcvtq_f16_s16(vsubq_s16(in7, p7));
 
     dct_quant_block_8x8_neon(b0, b1, b2, b3, b4, b5, b6, b7, out_data + x*8, quantization);
   }
