@@ -169,7 +169,7 @@ static inline float16_t get_dct_val(
   }
 }
 
-static inline void dct_quant_block_8x8_neon(
+void dct_quant_block_8x8_neon(
   float16x8_t b0, float16x8_t b1, float16x8_t b2, float16x8_t b3, 
   float16x8_t b4, float16x8_t b5, float16x8_t b6, float16x8_t b7, 
   int16_t *out_data, uint8_t *quant_tbl
