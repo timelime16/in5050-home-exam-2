@@ -59,10 +59,8 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
 {
   int x;
 
-  int16_t block[8*8];
-
-  uint8x8_t in0, in1, in2, in3, in4, in5, in6, in7;
-  uint8x8_t p0, p1, p2, p3, p4, p5, p6, p7;
+  int16x8_t in0, in1, in2, in3, in4, in5, in6, in7;
+  int16x8_t p0, p1, p2, p3, p4, p5, p6, p7;
 
   float16x8_t b0, b1, b2, b3, b4, b5, b6, b7;
 
@@ -84,17 +82,29 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
        functions. */
     // dct_quant_block_8x8(block, out_data+(x*8), quantization);
 
-    in0 = vld1_u8(in_data + x); in1 = vld1_u8(in_data + x + w); in2 = vld1_u8(in_data + x + 2*w); in3 = vld1_u8(in_data + x + 3*w);
-    in4 = vld1_u8(in_data + x + 4*w); in5 = vld1_u8(in_data + x + 5*w); in6 = vld1_u8(in_data + x + 6*w); in7 = vld1_u8(in_data + x + 7*w);
+    in0 = vld1q_s16((int16_t *)(in_data + x)); 
+    in1 = vld1q_s16((int16_t *)(in_data + x + w)); 
+    in2 = vld1q_s16((int16_t *)(in_data + x + 2*w)); 
+    in3 = vld1q_s16((int16_t *)(in_data + x + 3*w));
+    in4 = vld1q_s16((int16_t *)(in_data + x + 4*w)); 
+    in5 = vld1q_s16((int16_t *)(in_data + x + 5*w)); 
+    in6 = vld1q_s16((int16_t *)(in_data + x + 6*w)); 
+    in7 = vld1q_s16((int16_t *)(in_data + x + 7*w));
 
-    p0 = vld1_u8(prediction + x); p1 = vld1_u8(prediction + x + w); p2 = vld1_u8(prediction + x + 2*w); p3 = vld1_u8(prediction + x + 3*w);
-    p4 = vld1_u8(prediction + x + 4*w); p5 = vld1_u8(prediction + x + 5*w); p6 = vld1_u8(prediction + x + 6*w); p7 = vld1_u8(prediction + x + 7*w);
+    p0 = vld1q_s16((int16_t *)(prediction + x)); 
+    p1 = vld1q_s16((int16_t *)(prediction + x + w)); 
+    p2 = vld1q_s16((int16_t *)(prediction + x + 2*w)); 
+    p3 = vld1q_s16((int16_t *)(prediction + x + 3*w));
+    p4 = vld1q_s16((int16_t *)(prediction + x + 4*w)); 
+    p5 = vld1q_s16((int16_t *)(prediction + x + 5*w)); 
+    p6 = vld1q_s16((int16_t *)(prediction + x + 6*w)); 
+    p7 = vld1q_s16((int16_t *)(prediction + x + 7*w));
 
     // block[i*8+j] = ((int16_t)in_data[i*w+j+x] - prediction[i*w+j+x])
-    b0 = vcvtq_f16_u16(vsubl_u8(in0, p0)); b1 = vcvtq_f16_u16(vsubl_u8(in1, p1)); 
-    b2 = vcvtq_f16_u16(vsubl_u8(in2, p2)); b3 = vcvtq_f16_u16(vsubl_u8(in3, p3));
-    b4 = vcvtq_f16_u16(vsubl_u8(in4, p4)); b5 = vcvtq_f16_u16(vsubl_u8(in5, p5)); 
-    b6 = vcvtq_f16_u16(vsubl_u8(in6, p6)); b7 = vcvtq_f16_u16(vsubl_u8(in7, p7));
+    b0 = vcvtq_f16_u16(vsubq_s16(in0, p0)); b1 = vcvtq_f16_u16(vsubq_s16(in1, p1)); 
+    b2 = vcvtq_f16_u16(vsubq_s16(in2, p2)); b3 = vcvtq_f16_u16(vsubq_s16(in3, p3));
+    b4 = vcvtq_f16_u16(vsubq_s16(in4, p4)); b5 = vcvtq_f16_u16(vsubq_s16(in5, p5)); 
+    b6 = vcvtq_f16_u16(vsubq_s16(in6, p6)); b7 = vcvtq_f16_u16(vsubq_s16(in7, p7));
 
     dct_quant_block_8x8_neon(b0, b1, b2, b3, b4, b5, b6, b7, out_data + x*8, quantization);
   }

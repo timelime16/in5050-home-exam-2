@@ -313,6 +313,13 @@ void dct_quant_block_8x8_neon(
   b7 = vmulq_f16(b7, scale_factors_norm);
 
   // quantize
+  #pragma unroll
+  for (int i = 0; i < 4; ++i) 
+  {
+    out1.val[i] = vdupq_n_f16(0);
+    out2.val[i] = vdupq_n_f16(0);
+  }
+
   for (int i = 0; i < 4; ++i) 
   {
     int zigzag = i*8;
