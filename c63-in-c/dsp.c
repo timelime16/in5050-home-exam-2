@@ -142,54 +142,11 @@ static inline float16x8_t row_mat_mul(float16x8_t row, float16x8x4_t mat1, float
   return vaddq_f16(buf1, buf2);
 }
 
-static inline float16_t get_dct_val_from_row(float16x8_t row, uint8_t u) 
+static inline float16_t get_dct_val(uint8_t v, uint8_t u, float16x8_t *rows)
 {
-  switch (u) 
-  {
-  case 0:
-    return vgetq_lane_f16(row, 0);
-  case 1:
-    return vgetq_lane_f16(row, 1);
-  case 2:
-    return vgetq_lane_f16(row, 2);
-  case 3:
-    return vgetq_lane_f16(row, 3);
-  case 4:
-    return vgetq_lane_f16(row, 4);
-  case 5:
-    return vgetq_lane_f16(row, 5);
-  case 6:
-    return vgetq_lane_f16(row, 6);
-  default:
-    return vgetq_lane_f16(row, 7);
-  }
-}
-
-static inline float16_t get_dct_val(
-  uint8_t u, uint8_t v,
-  float16x8_t b0, float16x8_t b1, float16x8_t b2, float16x8_t b3, 
-  float16x8_t b4, float16x8_t b5, float16x8_t b6, float16x8_t b7
-)
-{
-  switch (v)
-  {
-  case 0:
-    return get_dct_val_from_row(b0, u);
-  case 1:
-    return get_dct_val_from_row(b1, u);
-  case 2:
-    return get_dct_val_from_row(b2, u);
-  case 3:
-    return get_dct_val_from_row(b3, u);
-  case 4:
-    return get_dct_val_from_row(b4, u);
-  case 5:
-    return get_dct_val_from_row(b5, u);
-  case 6:
-    return get_dct_val_from_row(b6, u);
-  default:
-    return get_dct_val_from_row(b7, u);
-  }
+  float16_t tmp[8];
+  vst1q_f16(tmp, rows[v]);
+  return tmp[u];
 }
 
 void dct_quant_block_8x8_neon(
@@ -284,6 +241,7 @@ void dct_quant_block_8x8_neon(
   b7 = vmulq_f16(b7, scale_factors_norm);
 
   // quantize
+  float16x8_t rows[8] = {b0, b1, b2, b3, b4, b5, b6, b7};
   for (int i = 0; i < 4; ++i) 
   {
     int zigzag = i*8;
@@ -293,7 +251,7 @@ void dct_quant_block_8x8_neon(
     {
       uint8_t u = zigzag_U[zigzag + j];
       uint8_t v = zigzag_V[zigzag + j];
-      float16_t dct = get_dct_val(u, v, b0, b1, b2, b3, b4, b5, b6, b7);
+      float16_t dct = get_dct_val(v, u, rows);
       out1.val[i] = vsetq_lane_f16(dct, out1.val[i], j);
     }
   }
@@ -306,7 +264,7 @@ void dct_quant_block_8x8_neon(
     {
       uint8_t u = zigzag_U[zigzag + j];
       uint8_t v = zigzag_V[zigzag + j];
-      float16_t dct = get_dct_val(u, v, b0, b1, b2, b3, b4, b5, b6, b7);
+      float16_t dct = get_dct_val(v, u, rows);
       out2.val[i] = vsetq_lane_f16(dct, out2.val[i], j);
     }
   }
