@@ -240,8 +240,12 @@ void dct_quant_block_8x8_neon(
   #pragma unroll
   for (int i = 0; i < 4; ++i) 
   {
-    dct1.val[i] = vld1q_f16((float16_t *)dctlookup[i]);
-    dct2.val[i] = vld1q_f16((float16_t *)dctlookup[i+4]);
+    // TODO: temp soln
+    float16_t tmp[8];
+    for (int j = 0; j < 8; ++j) tmp[j] = (float16_t) dctlookup[i][j];
+    dct1.val[i] = vld1q_f16(tmp);
+    for (int j = 0; j < 8; ++j) tmp[j] = (float16_t) dctlookup[i+4][j];
+    dct2.val[i] = vld1q_f16(tmp);
   }
   
   // Matrix multiplcation using row-order traversals
