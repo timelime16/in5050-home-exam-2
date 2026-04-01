@@ -312,97 +312,80 @@ void dct_quant_block_8x8_neon(
   b6 = vmulq_f16(b6, scale_factors_norm);
   b7 = vmulq_f16(b7, scale_factors_norm);
 
-  // TODO: test the previous parts first
-  float16_t mb[8*8] __attribute((aligned(16)));
-  float mb2[8*8] __attribute((aligned(16)));
-  
-  vst1q_f16(mb, b0);
-  vst1q_f16(mb + 8, b1);
-  vst1q_f16(mb + 2*8, b2);
-  vst1q_f16(mb + 3*8, b3);
-  vst1q_f16(mb + 4*8, b4);
-  vst1q_f16(mb + 5*8, b5);
-  vst1q_f16(mb + 6*8, b6);
-  vst1q_f16(mb + 7*8, b7);
-
-
-  quantize_block((float *) mb, mb2, quant_tbl);
-  for (int i = 0; i < 64; ++i) { out_data[i] = mb2[i]; }
-
   // quantize
-  // #pragma unroll
-  // for (int i = 0; i < 4; ++i) 
-  // {
-  //   out1.val[i] = vdupq_n_f16(0);
-  //   out2.val[i] = vdupq_n_f16(0);
-  // }
+  #pragma unroll
+  for (int i = 0; i < 4; ++i) 
+  {
+    out1.val[i] = vdupq_n_f16(0);
+    out2.val[i] = vdupq_n_f16(0);
+  }
 
-  // for (int i = 0; i < 4; ++i) 
-  // {
-  //   int zigzag = i*8;
+  for (int i = 0; i < 4; ++i) 
+  {
+    int zigzag = i*8;
     
-  //   #pragma unroll
-  //   for (int j = 0; j < 8; ++j) 
-  //   {
-  //     uint8_t u = zigzag_U[zigzag + j];
-  //     uint8_t v = zigzag_V[zigzag + j];
-  //     float16_t dct = get_dct_val(u, v, b0, b1, b2, b3, b4, b5, b6, b7);
-  //     out1.val[i] = set_dct_val(out1.val[i], dct, j);
-  //   }
-  // }
-  // for (int i = 0; i < 4; ++i) 
-  // {
-  //   int zigzag = (i+4)*8;
+    #pragma unroll
+    for (int j = 0; j < 8; ++j) 
+    {
+      uint8_t u = zigzag_U[zigzag + j];
+      uint8_t v = zigzag_V[zigzag + j];
+      float16_t dct = get_dct_val(u, v, b0, b1, b2, b3, b4, b5, b6, b7);
+      out1.val[i] = set_dct_val(out1.val[i], dct, j);
+    }
+  }
+  for (int i = 0; i < 4; ++i) 
+  {
+    int zigzag = (i+4)*8;
     
-  //   #pragma unroll
-  //   for (int j = 0; j < 8; ++j) 
-  //   {
-  //     uint8_t u = zigzag_U[zigzag + j];
-  //     uint8_t v = zigzag_V[zigzag + j];
-  //     float16_t dct = get_dct_val(u, v, b0, b1, b2, b3, b4, b5, b6, b7);
-  //     out2.val[i] = set_dct_val(out2.val[i], dct, j);
-  //   }
-  // }
+    #pragma unroll
+    for (int j = 0; j < 8; ++j) 
+    {
+      uint8_t u = zigzag_U[zigzag + j];
+      uint8_t v = zigzag_V[zigzag + j];
+      float16_t dct = get_dct_val(u, v, b0, b1, b2, b3, b4, b5, b6, b7);
+      out2.val[i] = set_dct_val(out2.val[i], dct, j);
+    }
+  }
 
-  // // Load tables
-  // quart = vdupq_n_f16(0.25f);
-  // q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl)));
-  // q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 8)));
-  // q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 2*8)));
-  // q3 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 3*8)));
-  // q4 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 4*8)));
-  // q5 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 5*8)));
-  // q6 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 6*8)));
-  // q7 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 7*8)));
+  // Load tables
+  quart = vdupq_n_f16(0.25f);
+  q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl)));
+  q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 8)));
+  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 2*8)));
+  q3 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 3*8)));
+  q4 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 4*8)));
+  q5 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 5*8)));
+  q6 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 6*8)));
+  q7 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 7*8)));
 
-  // // recip
-  // rp0 = vrecpeq_f16(q0); rp0 = vmulq_f16(vrecpsq_f16(q0, rp0), rp0);
-  // rp1 = vrecpeq_f16(q1); rp1 = vmulq_f16(vrecpsq_f16(q1, rp1), rp1);
-  // rp2 = vrecpeq_f16(q2); rp2 = vmulq_f16(vrecpsq_f16(q2, rp2), rp2);
-  // rp3 = vrecpeq_f16(q3); rp3 = vmulq_f16(vrecpsq_f16(q3, rp3), rp3);
-  // rp4 = vrecpeq_f16(q4); rp4 = vmulq_f16(vrecpsq_f16(q4, rp4), rp4);
-  // rp5 = vrecpeq_f16(q5); rp5 = vmulq_f16(vrecpsq_f16(q5, rp5), rp5);
-  // rp6 = vrecpeq_f16(q6); rp6 = vmulq_f16(vrecpsq_f16(q6, rp6), rp6);
-  // rp7 = vrecpeq_f16(q7); rp7 = vmulq_f16(vrecpsq_f16(q7, rp7), rp7);
+  // recip
+  rp0 = vrecpeq_f16(q0); rp0 = vmulq_f16(vrecpsq_f16(q0, rp0), rp0);
+  rp1 = vrecpeq_f16(q1); rp1 = vmulq_f16(vrecpsq_f16(q1, rp1), rp1);
+  rp2 = vrecpeq_f16(q2); rp2 = vmulq_f16(vrecpsq_f16(q2, rp2), rp2);
+  rp3 = vrecpeq_f16(q3); rp3 = vmulq_f16(vrecpsq_f16(q3, rp3), rp3);
+  rp4 = vrecpeq_f16(q4); rp4 = vmulq_f16(vrecpsq_f16(q4, rp4), rp4);
+  rp5 = vrecpeq_f16(q5); rp5 = vmulq_f16(vrecpsq_f16(q5, rp5), rp5);
+  rp6 = vrecpeq_f16(q6); rp6 = vmulq_f16(vrecpsq_f16(q6, rp6), rp6);
+  rp7 = vrecpeq_f16(q7); rp7 = vmulq_f16(vrecpsq_f16(q7, rp7), rp7);
 
-  // out1.val[0] = vmulq_f16(out1.val[0], vmulq_f16(q0, rp0));
-  // out1.val[1] = vmulq_f16(out1.val[1], vmulq_f16(q1, rp1));
-  // out1.val[2] = vmulq_f16(out1.val[2], vmulq_f16(q2, rp2));
-  // out1.val[3] = vmulq_f16(out1.val[3], vmulq_f16(q3, rp3));
-  // out2.val[0] = vmulq_f16(out2.val[0], vmulq_f16(q4, rp4));
-  // out2.val[1] = vmulq_f16(out2.val[1], vmulq_f16(q5, rp5));
-  // out2.val[2] = vmulq_f16(out2.val[2], vmulq_f16(q6, rp6));
-  // out2.val[3] = vmulq_f16(out2.val[3], vmulq_f16(q7, rp7));
+  out1.val[0] = vmulq_f16(out1.val[0], vmulq_f16(quart, rp0));
+  out1.val[1] = vmulq_f16(out1.val[1], vmulq_f16(quart, rp1));
+  out1.val[2] = vmulq_f16(out1.val[2], vmulq_f16(quart, rp2));
+  out1.val[3] = vmulq_f16(out1.val[3], vmulq_f16(quart, rp3));
+  out2.val[0] = vmulq_f16(out2.val[0], vmulq_f16(quart, rp4));
+  out2.val[1] = vmulq_f16(out2.val[1], vmulq_f16(quart, rp5));
+  out2.val[2] = vmulq_f16(out2.val[2], vmulq_f16(quart, rp6));
+  out2.val[3] = vmulq_f16(out2.val[3], vmulq_f16(quart, rp7));
 
-  // // Store back to memory
-  // vst1q_s16(out_data, vcvtq_s16_f16(vrndnq_f16(out1.val[0])));
-  // vst1q_s16(out_data + 8, vcvtq_s16_f16(vrndnq_f16(out1.val[1])));
-  // vst1q_s16(out_data + 2*8, vcvtq_s16_f16(vrndnq_f16(out1.val[2])));
-  // vst1q_s16(out_data + 3*8, vcvtq_s16_f16(vrndnq_f16(out1.val[3])));
-  // vst1q_s16(out_data + 4*8, vcvtq_s16_f16(vrndnq_f16(out2.val[0])));
-  // vst1q_s16(out_data + 5*8, vcvtq_s16_f16(vrndnq_f16(out2.val[1])));
-  // vst1q_s16(out_data + 6*8, vcvtq_s16_f16(vrndnq_f16(out2.val[2])));
-  // vst1q_s16(out_data + 7*8, vcvtq_s16_f16(vrndnq_f16(out2.val[3])));
+  // Store back to memory
+  vst1q_s16(out_data, vcvtq_s16_f16(vrndnq_f16(out1.val[0])));
+  vst1q_s16(out_data + 8, vcvtq_s16_f16(vrndnq_f16(out1.val[1])));
+  vst1q_s16(out_data + 2*8, vcvtq_s16_f16(vrndnq_f16(out1.val[2])));
+  vst1q_s16(out_data + 3*8, vcvtq_s16_f16(vrndnq_f16(out1.val[3])));
+  vst1q_s16(out_data + 4*8, vcvtq_s16_f16(vrndnq_f16(out2.val[0])));
+  vst1q_s16(out_data + 5*8, vcvtq_s16_f16(vrndnq_f16(out2.val[1])));
+  vst1q_s16(out_data + 6*8, vcvtq_s16_f16(vrndnq_f16(out2.val[2])));
+  vst1q_s16(out_data + 7*8, vcvtq_s16_f16(vrndnq_f16(out2.val[3])));
 }
 
 void dequant_idct_block_8x8(int16_t *in_data, int16_t *out_data,
