@@ -188,8 +188,8 @@ static inline void dct_quant_block_8x8_neon(
   #pragma unroll
   for (int i = 0; i < 4; ++i) 
   {
-    dct1.val[i] = vld1q_f16(dctlookup[i]);
-    dct2.val[i] = vld1q_f16(dctlookup[i+4]);
+    dct1.val[i] = vld1q_f16((float16_t *)dctlookup[i]);
+    dct2.val[i] = vld1q_f16((float16_t *)dctlookup[i+4]);
   }
   
   // Matrix multiplcation using row-order traversals
