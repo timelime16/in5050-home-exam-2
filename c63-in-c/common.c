@@ -110,10 +110,10 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
 
     // dct_quant_block_8x8_neon(b0, b1, b2, b3, b4, b5, b6, b7, out_data + x*8, quantization);
 
-    // for (int i = 0; i < 64; ++i) 
-    // {
-    //   printf("%d\n", (out_data + x*8)[i]);
-    // }
+    for (int i = 0; i < 64; ++i) 
+    {
+      printf("%d: %d\n", x, (out_data + x*8)[i]);
+    }
   }
 }
 
