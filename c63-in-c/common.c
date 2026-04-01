@@ -84,23 +84,23 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
     //    functions. */
     // dct_quant_block_8x8(block, out_data+(x*8), quantization);
 
-    in0 = vld1q_s16((int16_t *)(in_data + x)); 
-    in1 = vld1q_s16((int16_t *)(in_data + x + w)); 
-    in2 = vld1q_s16((int16_t *)(in_data + x + 2*w)); 
-    in3 = vld1q_s16((int16_t *)(in_data + x + 3*w));
-    in4 = vld1q_s16((int16_t *)(in_data + x + 4*w)); 
-    in5 = vld1q_s16((int16_t *)(in_data + x + 5*w)); 
-    in6 = vld1q_s16((int16_t *)(in_data + x + 6*w)); 
-    in7 = vld1q_s16((int16_t *)(in_data + x + 7*w));
+    in0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x))); 
+    in1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + w)));
+    in2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 2*w)));
+    in3 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 3*w)));
+    in4 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 4*w)));
+    in5 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 5*w)));
+    in6 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 6*w)));
+    in7 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 7*w)));
 
-    p0 = vld1q_s16((int16_t *)(prediction + x)); 
-    p1 = vld1q_s16((int16_t *)(prediction + x + w)); 
-    p2 = vld1q_s16((int16_t *)(prediction + x + 2*w)); 
-    p3 = vld1q_s16((int16_t *)(prediction + x + 3*w));
-    p4 = vld1q_s16((int16_t *)(prediction + x + 4*w)); 
-    p5 = vld1q_s16((int16_t *)(prediction + x + 5*w)); 
-    p6 = vld1q_s16((int16_t *)(prediction + x + 6*w)); 
-    p7 = vld1q_s16((int16_t *)(prediction + x + 7*w));
+    p0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x))); 
+    p1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + w)));
+    p2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 2*w)));
+    p3 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 3*w)));
+    p4 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 4*w)));
+    p5 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 5*w)));
+    p6 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 6*w)));
+    p7 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 7*w)));
 
     // block[i*8+j] = ((int16_t)in_data[i*w+j+x] - prediction[i*w+j+x])
     b0 = vcvtq_f16_s16(vsubq_s16(in0, p0)); b1 = vcvtq_f16_s16(vsubq_s16(in1, p1)); 
