@@ -142,26 +142,26 @@ static inline float16x8_t row_mat_mul(float16x8_t row, float16x8x4_t mat1, float
   return vaddq_f16(buf1, buf2);
 }
 
-static inline uint8_t get_u_static(uint8_t u) 
+static inline float16_t get_dct_val_from_row(float16x8_t row, uint8_t u) 
 {
   switch (u) 
   {
   case 0:
-    return 0;
+    return vgetq_lane_f16(row, 0);
   case 1:
-    return 1;
+    return vgetq_lane_f16(row, 1);
   case 2:
-    return 2;
+    return vgetq_lane_f16(row, 2);
   case 3:
-    return 3;
+    return vgetq_lane_f16(row, 3);
   case 4:
-    return 4;
+    return vgetq_lane_f16(row, 4);
   case 5:
-    return 5;
+    return vgetq_lane_f16(row, 5);
   case 6:
-    return 6;
+    return vgetq_lane_f16(row, 6);
   default:
-    return 7;
+    return vgetq_lane_f16(row, 7);
   }
 }
 
@@ -174,21 +174,21 @@ static inline float16_t get_dct_val(
   switch (v)
   {
   case 0:
-    return vgetq_lane_f16(b0, get_u_static(u));
+    return get_dct_val_from_row(b0, u);
   case 1:
-    return vgetq_lane_f16(b1, get_u_static(u));
+    return get_dct_val_from_row(b1, u);
   case 2:
-    return vgetq_lane_f16(b2, get_u_static(u));
+    return get_dct_val_from_row(b2, u);
   case 3:
-    return vgetq_lane_f16(b3, get_u_static(u));
+    return get_dct_val_from_row(b3, u);
   case 4:
-    return vgetq_lane_f16(b4, get_u_static(u));
+    return get_dct_val_from_row(b4, u);
   case 5:
-    return vgetq_lane_f16(b5, get_u_static(u));
+    return get_dct_val_from_row(b5, u);
   case 6:
-    return vgetq_lane_f16(b6, get_u_static(u));
+    return get_dct_val_from_row(b6, u);
   default:
-    return vgetq_lane_f16(b7, get_u_static(u));
+    return get_dct_val_from_row(b7, u);
   }
 }
 
