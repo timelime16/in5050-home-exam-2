@@ -100,20 +100,46 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
     //    continous. This allows us to ignore stride in DCT/iDCT and other
     //    functions. */
 
-    b0 = load_row(in_data, prediction, w, x, 0);
-    b1 = load_row(in_data, prediction, w, x, 1);
-    b2 = load_row(in_data, prediction, w, x, 2);
-    b3 = load_row(in_data, prediction, w, x, 3);
-    b4 = load_row(in_data, prediction, w, x, 4);
-    b5 = load_row(in_data, prediction, w, x, 5);
-    b6 = load_row(in_data, prediction, w, x, 6);
-    b7 = load_row(in_data, prediction, w, x, 7);
+    // b0 = load_row(in_data, prediction, w, x, 0);
+    // b1 = load_row(in_data, prediction, w, x, 1);
+    // b2 = load_row(in_data, prediction, w, x, 2);
+    // b3 = load_row(in_data, prediction, w, x, 3);
+    // b4 = load_row(in_data, prediction, w, x, 4);
+    // b5 = load_row(in_data, prediction, w, x, 5);
+    // b6 = load_row(in_data, prediction, w, x, 6);
+    // b7 = load_row(in_data, prediction, w, x, 7);
 
-    dct_quant_block_8x8_neon(
-      b0, b1, b2, b3, b4, b5, b6, b7,
-      q0, q1, q2, q3, q4, q5, q6, q7,
-      dct1, dct2, 
-      out_data + x*8, quantization
+    // dct_quant_block_8x8_neon(
+    //   b0, b1, b2, b3, b4, b5, b6, b7,
+    //   q0, q1, q2, q3, q4, q5, q6, q7,
+    //   dct1, dct2, 
+    //   out_data + x*8, quantization
+    // );
+
+    // top half
+    float16x8_t b0 = load_row(in_data, prediction, w, x, 0);
+    float16x8_t b1 = load_row(in_data, prediction, w, x, 1);
+    float16x8_t b2 = load_row(in_data, prediction, w, x, 2);
+    float16x8_t b3 = load_row(in_data, prediction, w, x, 3);
+
+    dct_quant_block_4x8_neon(
+      b0, b1, b2, b3,
+      q0, q1, q2, q3,
+      dct1, dct2,
+      out_data + x*8
+    );
+
+    // bottom half
+    float16x8_t b4 = load_row(in_data, prediction, w, x, 4);
+    float16x8_t b5 = load_row(in_data, prediction, w, x, 5);
+    float16x8_t b6 = load_row(in_data, prediction, w, x, 6);
+    float16x8_t b7 = load_row(in_data, prediction, w, x, 7);
+
+    dct_quant_block_4x8_neon(
+      b4, b5, b6, b7,
+      q4, q5, q6, q7,
+      dct1, dct2,
+      out_data + x*8 + 4*8
     );
   }
 }

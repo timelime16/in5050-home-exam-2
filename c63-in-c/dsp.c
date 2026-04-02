@@ -370,8 +370,6 @@ void dequant_idct_block_8x8_neon(
   out6 = vaddq_s16(vcvtq_s16_f16(r6), p6);
   out7 = vaddq_s16(vcvtq_s16_f16(r7), p7);
 
-
-
   // if (tmp < 0) { tmp = 0; }
   // else if (tmp > 255) { tmp = 255; }
 
@@ -473,4 +471,79 @@ void dequant_idct_block_8x8(int16_t *in_data, int16_t *out_data,
   transpose_block(mb2, mb);
 
   for (i = 0; i < 64; ++i) { out_data[i] = mb[i]; }
+}
+
+
+
+
+
+
+
+
+
+static inline void dct_quant_block_4x8_neon(
+  float16x8_t b0, float16x8_t b1,
+  float16x8_t b2, float16x8_t b3,
+  float16x8_t q0, float16x8_t q1,
+  float16x8_t q2, float16x8_t q3,
+  float16x8x4_t dct1, float16x8x4_t dct2,
+  int16_t *out
+)
+{
+  // ---- Row DCT ----
+  b0 = row_mat_mul(b0, dct1, dct2);
+  b1 = row_mat_mul(b1, dct1, dct2);
+  b2 = row_mat_mul(b2, dct1, dct2);
+  b3 = row_mat_mul(b3, dct1, dct2);
+
+  // ---- Partial transpose (4x8) ----
+  float16x8x2_t t0 = vtrnq_f16(b0, b1);
+  float16x8x2_t t1 = vtrnq_f16(b2, b3);
+
+  float32x4x2_t t2 = vtrnq_f32(
+      vreinterpretq_f32_f16(t0.val[0]),
+      vreinterpretq_f32_f16(t1.val[0]));
+
+  float32x4x2_t t3 = vtrnq_f32(
+      vreinterpretq_f32_f16(t0.val[1]),
+      vreinterpretq_f32_f16(t1.val[1]));
+
+  b0 = vreinterpretq_f16_f32(
+      vcombine_f32(vget_low_f32(t2.val[0]), vget_low_f32(t3.val[0])));
+  b1 = vreinterpretq_f16_f32(
+      vcombine_f32(vget_low_f32(t2.val[1]), vget_low_f32(t3.val[1])));
+  b2 = vreinterpretq_f16_f32(
+      vcombine_f32(vget_high_f32(t2.val[0]), vget_high_f32(t3.val[0])));
+  b3 = vreinterpretq_f16_f32(
+      vcombine_f32(vget_high_f32(t2.val[1]), vget_high_f32(t3.val[1])));
+
+  // ---- Column DCT ----
+  b0 = row_mat_mul(b0, dct1, dct2);
+  b1 = row_mat_mul(b1, dct1, dct2);
+  b2 = row_mat_mul(b2, dct1, dct2);
+  b3 = row_mat_mul(b3, dct1, dct2);
+
+  // ---- Scale ----
+  float16x8_t scale0 = {ISQRT2 * ISQRT2, ISQRT2, ISQRT2, ISQRT2,
+                        ISQRT2, ISQRT2, ISQRT2, ISQRT2};
+  float16x8_t scaleN = {ISQRT2, 1,1,1,1,1,1,1};
+
+  b0 = vmulq_f16(b0, scale0);
+  b1 = vmulq_f16(b1, scaleN);
+  b2 = vmulq_f16(b2, scaleN);
+  b3 = vmulq_f16(b3, scaleN);
+
+  // ---- Quantize (NO zigzag) ----
+  float16x8_t quart = vdupq_n_f16(0.25f);
+
+  b0 = vmulq_f16(b0, vmulq_f16(q0, quart));
+  b1 = vmulq_f16(b1, vmulq_f16(q1, quart));
+  b2 = vmulq_f16(b2, vmulq_f16(q2, quart));
+  b3 = vmulq_f16(b3, vmulq_f16(q3, quart));
+
+  // ---- Store ----
+  vst1q_s16(out + 0*8, vcvtq_s16_f16(vrndnq_f16(b0)));
+  vst1q_s16(out + 1*8, vcvtq_s16_f16(vrndnq_f16(b1)));
+  vst1q_s16(out + 2*8, vcvtq_s16_f16(vrndnq_f16(b2)));
+  vst1q_s16(out + 3*8, vcvtq_s16_f16(vrndnq_f16(b3)));
 }
