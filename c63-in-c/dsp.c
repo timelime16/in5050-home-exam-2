@@ -121,12 +121,8 @@ void dct_quant_block_8x8_neon(
   #pragma unroll
   for (int i = 0; i < 4; ++i) 
   {
-    // TODO: temp soln
-    float16_t tmp[8];
-    for (int j = 0; j < 8; ++j) tmp[j] = (float16_t) dctlookup[i][j];
-    dct1.val[i] = vld1q_f16(tmp);
-    for (int j = 0; j < 8; ++j) tmp[j] = (float16_t) dctlookup[i+4][j];
-    dct2.val[i] = vld1q_f16(tmp);
+    dct1.val[i] = vld1q_f16(dctlookup_f16[i]);
+    dct2.val[i] = vld1q_f16(dctlookup_f16[i+4]);
   }
   
   // Matrix multiplcation using row-order traversals
@@ -332,12 +328,8 @@ void dequant_idct_block_8x8_neon(
   #pragma unroll
   for (int i = 0; i < 4; ++i) 
   {
-    // TODO: temp soln
-    float16_t tmp[8];
-    for (int j = 0; j < 8; ++j) tmp[j] = (float16_t) dctlookup_T[i][j];
-    dct1.val[i] = vld1q_f16(tmp);
-    for (int j = 0; j < 8; ++j) tmp[j] = (float16_t) dctlookup_T[i+4][j];
-    dct2.val[i] = vld1q_f16(tmp);
+    dct1.val[i] = vld1q_f16(dctlookup_f16_T[i]);
+    dct2.val[i] = vld1q_f16(dctlookup_f16_T[i+4]);
   }
 
   float16x8_t buf0, buf1, buf2, buf3, buf4, buf5, buf6, buf7;
@@ -406,21 +398,13 @@ void dequant_idct_block_8x8_neon(
   out6 = vaddq_s16(vcvtq_s16_f16(r6), p6);
   out7 = vaddq_s16(vcvtq_s16_f16(r7), p7);
 
-  // max and min
-  // int16x8_t zero, r255;
-  // zero = vdupq_n_s16(0);
-  // r255 = vdupq_n_s16(255);
-  // out0 = vmaxq_s16(zero, vminq_s16(r255, out0));
-  // out1 = vmaxq_s16(zero, vminq_s16(r255, out1));
-  // out2 = vmaxq_s16(zero, vminq_s16(r255, out2));
-  // out3 = vmaxq_s16(zero, vminq_s16(r255, out3));
-  // out4 = vmaxq_s16(zero, vminq_s16(r255, out4));
-  // out5 = vmaxq_s16(zero, vminq_s16(r255, out5));
-  // out6 = vmaxq_s16(zero, vminq_s16(r255, out6));
-  // out7 = vmaxq_s16(zero, vminq_s16(r255, out7));
 
-  // vqmovun_s16 -> automatically does this
 
+  // if (tmp < 0) { tmp = 0; }
+  // else if (tmp > 255) { tmp = 255; }
+
+  // out_data[i*w+j+x] = tmp;
+  // vqmovun_s16 -> automatically does min/max
   vst1_u8(out_data, vqmovun_s16(out0));
   vst1_u8(out_data + w, vqmovun_s16(out1));
   vst1_u8(out_data + 2*w, vqmovun_s16(out2));
@@ -429,21 +413,6 @@ void dequant_idct_block_8x8_neon(
   vst1_u8(out_data + 5*w, vqmovun_s16(out5));
   vst1_u8(out_data + 6*w, vqmovun_s16(out6));
   vst1_u8(out_data + 7*w, vqmovun_s16(out7));
-
-  // /* Two 1D inverse DCT operations with transpose */
-  // for (v = 0; v < 8; ++v) { idct_1d(mb+v*8, mb2+v*8); }
-  // transpose_block(mb2, mb);
-  // for (v = 0; v < 8; ++v) { idct_1d(mb+v*8, mb2+v*8); }
-  // transpose_block(mb2, mb);
-
-  // for (i = 0; i < 64; ++i) { out_data[i] = mb[i]; }
-
-  // int16_t tmp = block[i*8+j] + (int16_t)prediction[i*w+j+x];
-
-  //       if (tmp < 0) { tmp = 0; }
-  //       else if (tmp > 255) { tmp = 255; }
-
-  //       out_data[i*w+j+x] = tmp;
 }
 
 
