@@ -16,29 +16,36 @@ void dequantize_idct_row(int16_t *in_data, uint8_t *prediction, int w, int h,
 {
   int x;
 
-  int16_t block[8*8];
+  int16x8_t p0, p1, p2, p3, p4, p5, p6, p7;
 
   /* Perform the dequantization and iDCT */
   for(x = 0; x < w; x += 8)
-  {
-    int i, j;
+  { 
+    p0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x))); 
+    p1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + w)));
+    p2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 2*w)));
+    p3 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 3*w)));
+    p4 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 4*w)));
+    p5 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 5*w)));
+    p6 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 6*w)));
+    p7 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 7*w)));
 
-    dequant_idct_block_8x8(in_data+(x*8), block, quantization);
+    dequant_idct_block_8x8_neon(in_data+(x*8), out_data + x, quantization, w, p0, p1, p2, p3, p4, p5, p6, p7);
 
-    for (i = 0; i < 8; ++i)
-    {
-      for (j = 0; j < 8; ++j)
-      {
-        /* Add prediction block. Note: DCT is not precise -
-           Clamp to legal values */
-        int16_t tmp = block[i*8+j] + (int16_t)prediction[i*w+j+x];
+    // for (i = 0; i < 8; ++i)
+    // {
+    //   for (j = 0; j < 8; ++j)
+    //   {
+    //     /* Add prediction block. Note: DCT is not precise -
+    //        Clamp to legal values */
+    //     int16_t tmp = block[i*8+j] + (int16_t)prediction[i*w+j+x];
 
-        if (tmp < 0) { tmp = 0; }
-        else if (tmp > 255) { tmp = 255; }
+    //     if (tmp < 0) { tmp = 0; }
+    //     else if (tmp > 255) { tmp = 255; }
 
-        out_data[i*w+j+x] = tmp;
-      }
-    }
+    //     out_data[i*w+j+x] = tmp;
+    //   }
+    // }
   }
 }
 
@@ -109,11 +116,6 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
     b6 = vcvtq_f16_s16(vsubq_s16(in6, p6)); b7 = vcvtq_f16_s16(vsubq_s16(in7, p7));
 
     dct_quant_block_8x8_neon(b0, b1, b2, b3, b4, b5, b6, b7, out_data + x*8, quantization);
-
-    // for (int i = 0; i < 64; ++i) 
-    // {
-    //   printf("(%d, %d): %d\n", x, i, (out_data + x*8)[i]);
-    // }
   }
 }
 
