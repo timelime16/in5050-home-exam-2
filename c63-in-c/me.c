@@ -45,17 +45,18 @@ static void me_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   int mx = mb_x * 8;
   int my = mb_y * 8;
 
-  // Load orig block [r0 | r1] 16 pixels in one register
-  orig = orig + my*w+mx;
-  uint8x8_t _r0, _r1, _r2, _r3, _r4, _r5, _r6, _r7;
-  _r0 = vld1_u8(orig); _r1 = vld1_u8(orig + w); _r2 = vld1_u8(orig + 2*w); _r3 = vld1_u8(orig + 3*w);
-  _r4 = vld1_u8(orig + 4*w); _r5 = vld1_u8(orig + 5*w); _r6 = vld1_u8(orig + 6*w); _r7 = vld1_u8(orig + 7*w);
+  uint8x8_t _r0, _r1, _r2, _r3, _r4, _r5, _r6, _r7; // orig rows
 
   uint8x8_t _rr0, _rr1, _rr2, _rr3, _rr4, _rr5, _rr6, _rr7; // for ref block
 
   uint16x8_t _acc;
 
   uint32_t best_sad = UINT_MAX;
+
+  // Load orig block [r0 | r1] 16 pixels in one register
+  orig = orig + my*w+mx;
+  _r0 = vld1_u8(orig); _r1 = vld1_u8(orig + w); _r2 = vld1_u8(orig + 2*w); _r3 = vld1_u8(orig + 3*w);
+  _r4 = vld1_u8(orig + 4*w); _r5 = vld1_u8(orig + 5*w); _r6 = vld1_u8(orig + 6*w); _r7 = vld1_u8(orig + 7*w);
 
   for (y = top; y < bottom; ++y)
   {
@@ -138,8 +139,7 @@ void c63_motion_estimate(struct c63_common *cm)
   }
 }
 
-/* Motion compensation for 8x8 block */
-static void mc_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
+static void mc_block_8x8_neon(struct c63_common *cm, int mb_x, int mb_y,
     uint8_t *predicted, uint8_t *ref, int color_component)
 {
   struct macroblock *mb =
@@ -175,6 +175,65 @@ static void mc_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
   vst1_u8(dst_base + 5 * w, _r5);
   vst1_u8(dst_base + 6 * w, _r6);
   vst1_u8(dst_base + 7 * w, _r7);
+}
+
+void c63_motion_compensate_neon(struct c63_common *cm)
+{
+  int mb_x, mb_y;
+
+  /* Luma */
+  for (mb_y = 0; mb_y < cm->mb_rows; ++mb_y)
+  {
+    for (mb_x = 0; mb_x < cm->mb_cols; ++mb_x)
+    {
+      mc_block_8x8_neon(cm, mb_x, mb_y, cm->curframe->predicted->Y,
+          cm->refframe->recons->Y, Y_COMPONENT);
+    }
+  }
+
+  /* Chroma */
+  for (mb_y = 0; mb_y < cm->mb_rows / 2; ++mb_y)
+  {
+    for (mb_x = 0; mb_x < cm->mb_cols / 2; ++mb_x)
+    {
+      mc_block_8x8_neon(cm, mb_x, mb_y, cm->curframe->predicted->U,
+          cm->refframe->recons->U, U_COMPONENT);
+      mc_block_8x8_neon(cm, mb_x, mb_y, cm->curframe->predicted->V,
+          cm->refframe->recons->V, V_COMPONENT);
+    }
+  }
+}
+
+
+
+// Keep original implementation for dec
+
+/* Motion compensation for 8x8 block */
+static void mc_block_8x8(struct c63_common *cm, int mb_x, int mb_y,
+    uint8_t *predicted, uint8_t *ref, int color_component)
+{
+  struct macroblock *mb =
+    &cm->curframe->mbs[color_component][mb_y*cm->padw[color_component]/8+mb_x];
+
+  if (!mb->use_mv) { return; }
+
+  int left = mb_x * 8;
+  int top = mb_y * 8;
+  int right = left + 8;
+  int bottom = top + 8;
+
+  int w = cm->padw[color_component];
+
+  /* Copy block from ref mandated by MV */
+  int x, y;
+
+  for (y = top; y < bottom; ++y)
+  {
+    for (x = left; x < right; ++x)
+    {
+      predicted[y*w+x] = ref[(y + mb->mv_y) * w + (x + mb->mv_x)];
+    }
+  }
 }
 
 void c63_motion_compensate(struct c63_common *cm)

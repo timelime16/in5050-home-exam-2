@@ -11,12 +11,12 @@
 #include "common.h"
 #include "dsp.h"
 
-void dequantize_idct_row(int16_t *in_data, uint8_t *prediction, int w, int h,
+void dequantize_idct_row_neon(int16_t *in_data, uint8_t *prediction, int w, int h,
     int y, uint8_t *out_data, uint8_t *quantization)
 {
   int x;
 
-  int16x8_t p0, p1, p2, p3, p4, p5, p6, p7;
+  int16x8_t p0, p1, p2, p3, p4, p5, p6, p7; // prediction rows
 
   /* Perform the dequantization and iDCT */
   for(x = 0; x < w; x += 8)
@@ -31,32 +31,17 @@ void dequantize_idct_row(int16_t *in_data, uint8_t *prediction, int w, int h,
     p7 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 7*w)));
 
     dequant_idct_block_8x8_neon(in_data+(x*8), out_data + x, quantization, w, p0, p1, p2, p3, p4, p5, p6, p7);
-
-    // for (i = 0; i < 8; ++i)
-    // {
-    //   for (j = 0; j < 8; ++j)
-    //   {
-    //     /* Add prediction block. Note: DCT is not precise -
-    //        Clamp to legal values */
-    //     int16_t tmp = block[i*8+j] + (int16_t)prediction[i*w+j+x];
-
-    //     if (tmp < 0) { tmp = 0; }
-    //     else if (tmp > 255) { tmp = 255; }
-
-    //     out_data[i*w+j+x] = tmp;
-    //   }
-    // }
   }
 }
 
-void dequantize_idct(int16_t *in_data, uint8_t *prediction, uint32_t width,
+void dequantize_idct_neon(int16_t *in_data, uint8_t *prediction, uint32_t width,
     uint32_t height, uint8_t *out_data, uint8_t *quantization)
 {
   int y;
 
   for (y = 0; y < height; y += 8)
   {
-    dequantize_idct_row(in_data+y*width, prediction+y*width, width, height, y,
+    dequantize_idct_row_neon(in_data+y*width, prediction+y*width, width, height, y,
         out_data+y*width, quantization);
   }
 }
@@ -66,8 +51,6 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
 {
   int x;
 
-  int16_t block[8*8];
-
   int16x8_t in0, in1, in2, in3, in4, in5, in6, in7;
   int16x8_t p0, p1, p2, p3, p4, p5, p6, p7;
 
@@ -76,21 +59,11 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
   /* Perform the DCT and quantization */
   for(x = 0; x < w; x += 8)
   {
-    // int i, j;
-
-    // for (i = 0; i < 8; ++i)
-    // {
-    //   for (j = 0; j < 8; ++j)
-    //   {
-    //     block[i*8+j] = ((int16_t)in_data[i*w+j+x] - prediction[i*w+j+x]);
-    //   }
-    // }
-
     // /* Store MBs linear in memory, i.e. the 64 coefficients are stored
     //    continous. This allows us to ignore stride in DCT/iDCT and other
     //    functions. */
-    // dct_quant_block_8x8(block, out_data+(x*8), quantization);
 
+    // block[i*8+j] = ((int16_t)in_data[i*w+j+x] - prediction[i*w+j+x])
     in0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x))); 
     in1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + w)));
     in2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 2*w)));
@@ -109,7 +82,6 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
     p6 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 6*w)));
     p7 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 7*w)));
 
-    // block[i*8+j] = ((int16_t)in_data[i*w+j+x] - prediction[i*w+j+x])
     b0 = vcvtq_f16_s16(vsubq_s16(in0, p0)); b1 = vcvtq_f16_s16(vsubq_s16(in1, p1)); 
     b2 = vcvtq_f16_s16(vsubq_s16(in2, p2)); b3 = vcvtq_f16_s16(vsubq_s16(in3, p3));
     b4 = vcvtq_f16_s16(vsubq_s16(in4, p4)); b5 = vcvtq_f16_s16(vsubq_s16(in5, p5)); 
@@ -194,4 +166,49 @@ void dump_image(yuv_t *image, int w, int h, FILE *fp)
   fwrite(image->Y, 1, w*h, fp);
   fwrite(image->U, 1, w*h/4, fp);
   fwrite(image->V, 1, w*h/4, fp);
+}
+
+
+// Keep original for dec
+void dequantize_idct_row(int16_t *in_data, uint8_t *prediction, int w, int h,
+    int y, uint8_t *out_data, uint8_t *quantization)
+{
+  int x;
+
+  int16_t block[8*8];
+
+  /* Perform the dequantization and iDCT */
+  for(x = 0; x < w; x += 8)
+  {
+    int i, j;
+
+    dequant_idct_block_8x8(in_data+(x*8), block, quantization);
+
+    for (i = 0; i < 8; ++i)
+    {
+      for (j = 0; j < 8; ++j)
+      {
+        /* Add prediction block. Note: DCT is not precise -
+           Clamp to legal values */
+        int16_t tmp = block[i*8+j] + (int16_t)prediction[i*w+j+x];
+
+        if (tmp < 0) { tmp = 0; }
+        else if (tmp > 255) { tmp = 255; }
+
+        out_data[i*w+j+x] = tmp;
+      }
+    }
+  }
+}
+
+void dequantize_idct(int16_t *in_data, uint8_t *prediction, uint32_t width,
+    uint32_t height, uint8_t *out_data, uint8_t *quantization)
+{
+  int y;
+
+  for (y = 0; y < height; y += 8)
+  {
+    dequantize_idct_row(in_data+y*width, prediction+y*width, width, height, y,
+        out_data+y*width, quantization);
+  }
 }

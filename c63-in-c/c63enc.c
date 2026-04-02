@@ -100,7 +100,7 @@ static void c63_encode_image(struct c63_common *cm, yuv_t *image)
     c63_motion_estimate(cm);
 
     /* Motion Compensation */
-    c63_motion_compensate(cm);
+    c63_motion_compensate_neon(cm);
   }
 
   /* DCT and Quantization */
