@@ -33,7 +33,7 @@ void dequantize_idct_row_neon(int16_t *in_data, uint8_t *prediction, int w, int 
   /* Perform the dequantization and iDCT */
   for(x = 0; x < w; x += 8)
   { 
-    dequant_idct_block_8x8_neon(in_data+(x*8), out_data + x, prediction, x, w, quantization, dct);
+    dequant_idct_block_8x8_neon(in_data+(x*8), out_data + x, prediction, quantization, x, w, dct);
   }
 }
 
