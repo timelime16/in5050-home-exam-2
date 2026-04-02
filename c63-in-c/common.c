@@ -17,21 +17,23 @@ void dequantize_idct_row_neon(int16_t *in_data, uint8_t *prediction, int w, int 
 {
   int x;
 
-  int16x8_t p0, p1, p2, p3, p4, p5, p6, p7; // prediction rows
+  float16x8_t dct0, dct1, dct2, dct3, dct4, dct5, dct6, dct7; // dctlookup
+
+  dct0 = vld1q_f16(dctlookup_f16_T[0]);
+  dct1 = vld1q_f16(dctlookup_f16_T[1]);
+  dct2 = vld1q_f16(dctlookup_f16_T[2]);
+  dct3 = vld1q_f16(dctlookup_f16_T[3]);
+  dct4 = vld1q_f16(dctlookup_f16_T[4]);
+  dct5 = vld1q_f16(dctlookup_f16_T[5]);
+  dct6 = vld1q_f16(dctlookup_f16_T[6]);
+  dct7 = vld1q_f16(dctlookup_f16_T[7]);
+
+  float16x8_t dct[8] = {dct0, dct1, dct2, dct3, dct4, dct5, dct6, dct7};
 
   /* Perform the dequantization and iDCT */
   for(x = 0; x < w; x += 8)
   { 
-    p0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x))); 
-    p1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + w)));
-    p2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 2*w)));
-    p3 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 3*w)));
-    p4 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 4*w)));
-    p5 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 5*w)));
-    p6 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 6*w)));
-    p7 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 7*w)));
-
-    dequant_idct_block_8x8_neon(in_data+(x*8), out_data + x, quantization, w, p0, p1, p2, p3, p4, p5, p6, p7);
+    dequant_idct_block_8x8_neon(in_data+(x*8), out_data + x, prediction, x, w, quantization, dct);
   }
 }
 

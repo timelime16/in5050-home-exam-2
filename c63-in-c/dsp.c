@@ -187,132 +187,131 @@ static inline float16x8_t foo(float16x8_t row, float16x8x4_t mat1, float16x8x4_t
   return vaddq_f16(buf1, buf2);
 }
 
-void dequant_idct_block_8x8_neon(
-  int16_t *in_data, uint8_t *out_data, uint8_t *quant_tbl, int w,
-  int16x8_t p0, int16x8_t p1, int16x8_t p2, int16x8_t p3, 
-  int16x8_t p4, int16x8_t p5, int16x8_t p6, int16x8_t p7
-)
+static inline void dequant_block_neon(float16x8_t *block, uint8_t *quant_tbl)
 {
-  float16_t mb[8*8] __attribute((aligned(16)));
-  float16_t mb2[8*8] __attribute((aligned(16)));
+  // out_data[v*8+u] = (float16_t) round((dct * quant_tbl[zigzag]) / 4.0);
+  int i;
+  float16x8_t q;
 
-  int i, v;
-
-  for (i = 0; i < 64; ++i) { mb[i] = in_data[i]; }
-
-  dequantize_block_neon(mb, mb2, quant_tbl);
-
-  float16x8_t r0, r1, r2, r3, r4, r5, r6, r7;
-  r0 = vld1q_f16(mb2);
-  r1 = vld1q_f16(mb2 + 8);
-  r2 = vld1q_f16(mb2 + 2*8);
-  r3 = vld1q_f16(mb2 + 3*8);
-  r4 = vld1q_f16(mb2 + 4*8);
-  r5 = vld1q_f16(mb2 + 5*8);
-  r6 = vld1q_f16(mb2 + 6*8);
-  r7 = vld1q_f16(mb2 + 7*8);
-
-  // scale
-  float16x8_t scale_factors_row_0 = {ISQRT2 * ISQRT2, ISQRT2, ISQRT2, ISQRT2, ISQRT2, ISQRT2, ISQRT2, ISQRT2};
-  float16x8_t scale_factors_norm = {ISQRT2, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
-  r0 = vmulq_f16(r0, scale_factors_row_0);
-  r1 = vmulq_f16(r1, scale_factors_norm);
-  r2 = vmulq_f16(r2, scale_factors_norm);
-  r3 = vmulq_f16(r3, scale_factors_norm);
-  r4 = vmulq_f16(r4, scale_factors_norm);
-  r5 = vmulq_f16(r5, scale_factors_norm);
-  r6 = vmulq_f16(r6, scale_factors_norm);
-  r7 = vmulq_f16(r7, scale_factors_norm);
-
-  // idct_1d
-  float16x8x4_t dct1, dct2;
   #pragma unroll
-  for (int i = 0; i < 4; ++i) 
+  for (i = 0; i < 8; ++i)
   {
-    dct1.val[i] = vld1q_f16(dctlookup_f16_T[i]);
-    dct2.val[i] = vld1q_f16(dctlookup_f16_T[i+4]);
+    q = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + i*8)));
+    block[i] = vmulq_n_f16(vmulq_f16(block[i], q), 0.25f);
+  }
+}
+
+static inline void scatter_neon(float16x8_t *block)
+{
+  int i;
+  float16_t tmp[64], tmp2[64];
+
+  #pragma unroll
+  for (i = 0; i < 8; ++i)
+  {
+    vst1q_f16(tmp + i*8, block[i]);
   }
 
-  float16x8_t buf0, buf1, buf2, buf3, buf4, buf5, buf6, buf7;
-  buf0 = foo(r0, dct1, dct2);
-  buf1 = foo(r1, dct1, dct2);
-  buf2 = foo(r2, dct1, dct2);
-  buf3 = foo(r3, dct1, dct2);
-  buf4 = foo(r4, dct1, dct2);
-  buf5 = foo(r5, dct1, dct2);
-  buf6 = foo(r6, dct1, dct2);
-  buf7 = foo(r7, dct1, dct2);
+  #pragma unroll
+  for (i = 0; i < 64; ++i)
+  {
+    uint8_t u = zigzag_U[i];
+    uint8_t v = zigzag_V[i];
+    tmp2[v*8+u] = tmp[i];
+  }
 
-  float16x8x2_t tmp0, tmp1, tmp2, tmp3; // tanspose - 16bit
-  float32x4x2_t tmp4, tmp5, tmp6, tmp7; // transpose - 32 bit
-  tmp0 = vtrnq_f16(buf0, buf1);
-  tmp1 = vtrnq_f16(buf2, buf3);
-  tmp2 = vtrnq_f16(buf4, buf5);
-  tmp3 = vtrnq_f16(buf6, buf7);
-  tmp4 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[0]), vreinterpretq_f32_f16(tmp1.val[0]));
-  tmp5 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[1]), vreinterpretq_f32_f16(tmp1.val[1]));
-  tmp6 = vtrnq_f32(vreinterpretq_f32_f16(tmp2.val[0]), vreinterpretq_f32_f16(tmp3.val[0]));
-  tmp7 = vtrnq_f32(vreinterpretq_f32_f16(tmp2.val[1]), vreinterpretq_f32_f16(tmp3.val[1]));
-  r0 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp4.val[0]), vget_low_f32(tmp6.val[0])));
-  r1 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp4.val[1]), vget_low_f32(tmp6.val[1])));
-  r2 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp5.val[0]), vget_low_f32(tmp7.val[0])));
-  r3 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp5.val[1]), vget_low_f32(tmp7.val[1])));
-  r4 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp4.val[0]), vget_high_f32(tmp6.val[0])));
-  r5 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp4.val[1]), vget_high_f32(tmp6.val[1])));
-  r6 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp5.val[0]), vget_high_f32(tmp7.val[0])));
-  r7 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp5.val[1]), vget_high_f32(tmp7.val[1])));
-
-  buf0 = foo(r0, dct1, dct2);
-  buf1 = foo(r1, dct1, dct2);
-  buf2 = foo(r2, dct1, dct2);
-  buf3 = foo(r3, dct1, dct2);
-  buf4 = foo(r4, dct1, dct2);
-  buf5 = foo(r5, dct1, dct2);
-  buf6 = foo(r6, dct1, dct2);
-  buf7 = foo(r7, dct1, dct2);
-
-  tmp0 = vtrnq_f16(buf0, buf1);
-  tmp1 = vtrnq_f16(buf2, buf3);
-  tmp2 = vtrnq_f16(buf4, buf5);
-  tmp3 = vtrnq_f16(buf6, buf7);
-  tmp4 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[0]), vreinterpretq_f32_f16(tmp1.val[0]));
-  tmp5 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[1]), vreinterpretq_f32_f16(tmp1.val[1]));
-  tmp6 = vtrnq_f32(vreinterpretq_f32_f16(tmp2.val[0]), vreinterpretq_f32_f16(tmp3.val[0]));
-  tmp7 = vtrnq_f32(vreinterpretq_f32_f16(tmp2.val[1]), vreinterpretq_f32_f16(tmp3.val[1]));
-  r0 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp4.val[0]), vget_low_f32(tmp6.val[0])));
-  r1 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp4.val[1]), vget_low_f32(tmp6.val[1])));
-  r2 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp5.val[0]), vget_low_f32(tmp7.val[0])));
-  r3 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp5.val[1]), vget_low_f32(tmp7.val[1])));
-  r4 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp4.val[0]), vget_high_f32(tmp6.val[0])));
-  r5 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp4.val[1]), vget_high_f32(tmp6.val[1])));
-  r6 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp5.val[0]), vget_high_f32(tmp7.val[0])));
-  r7 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp5.val[1]), vget_high_f32(tmp7.val[1])));
-
-  // int16_t tmp = block[i*8+j] + (int16_t)prediction[i*w+j+x];
-  int16x8_t out0, out1, out2, out3, out4, out5, out6, out7;
-  out0 = vaddq_s16(vcvtq_s16_f16(r0), p0);
-  out1 = vaddq_s16(vcvtq_s16_f16(r1), p1);
-  out2 = vaddq_s16(vcvtq_s16_f16(r2), p2);
-  out3 = vaddq_s16(vcvtq_s16_f16(r3), p3);
-  out4 = vaddq_s16(vcvtq_s16_f16(r4), p4);
-  out5 = vaddq_s16(vcvtq_s16_f16(r5), p5);
-  out6 = vaddq_s16(vcvtq_s16_f16(r6), p6);
-  out7 = vaddq_s16(vcvtq_s16_f16(r7), p7);
-
-  // if (tmp < 0) { tmp = 0; }
-  // else if (tmp > 255) { tmp = 255; }
-
-  // out_data[i*w+j+x] = tmp;
-  // vqmovun_s16 -> automatically does min/max
-  vst1_u8(out_data, vqmovun_s16(out0));
-  vst1_u8(out_data + w, vqmovun_s16(out1));
-  vst1_u8(out_data + 2*w, vqmovun_s16(out2));
-  vst1_u8(out_data + 3*w, vqmovun_s16(out3));
-  vst1_u8(out_data + 4*w, vqmovun_s16(out4));
-  vst1_u8(out_data + 5*w, vqmovun_s16(out5));
-  vst1_u8(out_data + 6*w, vqmovun_s16(out6));
-  vst1_u8(out_data + 7*w, vqmovun_s16(out7));
+  #pragma unroll
+  for (i = 0; i < 8; ++i)
+  {
+    block[i] = vld1q_f16(tmp + i*8);
+  }
 }
+
+static inline void dequant_store_neon(float16x8_t *block, uint8_t *out_data, uint8_t *prediction, int x, int w)
+{
+  int i;
+  int16x8_t p;
+
+  #pragma unroll
+  for (i = 0; i < 8; ++i) 
+  {
+    p = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + i*w)));
+    p = vaddq_s16(vcvtq_s16_f16(block[i]), p);
+    vst1_u8(out_data + i*w, vqmovun_s16(p));
+  }
+}
+
+void dequant_idct_block_8x8_neon(int16_t *in_data, uint8_t *out_data, uint8_t *prediction, uint8_t *quant_tbl, 
+  int x, int w, float16x8_t *dct)
+{
+  int i;
+  float16x8_t r0, r1, r2, r3, r4, r5, r6, r7;
+
+  r0 = vcvtq_f16_s16(vld1q_s16(in_data));
+  r1 = vcvtq_f16_s16(vld1q_s16(in_data + 8));
+  r2 = vcvtq_f16_s16(vld1q_s16(in_data + 2*8));
+  r3 = vcvtq_f16_s16(vld1q_s16(in_data + 3*8));
+  r4 = vcvtq_f16_s16(vld1q_s16(in_data + 4*8));
+  r5 = vcvtq_f16_s16(vld1q_s16(in_data + 5*8));
+  r6 = vcvtq_f16_s16(vld1q_s16(in_data + 6*8));
+  r7 = vcvtq_f16_s16(vld1q_s16(in_data + 7*8));
+
+  // dequant
+  float16x8_t block[8] = {r0, r1, r2, r3, r4, r5, r6, r7};
+  dequant_block_neon(block, quant_tbl);
+
+  // scatter
+  scatter_neon(block);
+
+  // scale
+  scale_block_neon(block);
+
+  // Matrix multiplication
+  #pragma unroll
+  for (i = 0; i < 8; ++i) 
+  {
+    block[i] = row_mat_mul(block[i], dct);
+  }
+  // Transpose
+  transpose_block_neon(block);
+
+  // Matrix multiplication
+  #pragma unroll
+  for (i = 0; i < 8; ++i) 
+  {
+    block[i] = row_mat_mul(block[i], dct);
+  }
+  // Transpose
+  transpose_block_neon(block);
+
+  // Clean up and store
+  dequant_store_neon(block, out_data, prediction, x, w);
+  // int16_t tmp = block[i*8+j] + (int16_t)prediction[i*w+j+x];
+  // int16x8_t out0, out1, out2, out3, out4, out5, out6, out7;
+  // out0 = vaddq_s16(vcvtq_s16_f16(r0), p0);
+  // out1 = vaddq_s16(vcvtq_s16_f16(r1), p1);
+  // out2 = vaddq_s16(vcvtq_s16_f16(r2), p2);
+  // out3 = vaddq_s16(vcvtq_s16_f16(r3), p3);
+  // out4 = vaddq_s16(vcvtq_s16_f16(r4), p4);
+  // out5 = vaddq_s16(vcvtq_s16_f16(r5), p5);
+  // out6 = vaddq_s16(vcvtq_s16_f16(r6), p6);
+  // out7 = vaddq_s16(vcvtq_s16_f16(r7), p7);
+
+  // // if (tmp < 0) { tmp = 0; }
+  // // else if (tmp > 255) { tmp = 255; }
+
+  // // out_data[i*w+j+x] = tmp;
+  // // vqmovun_s16 -> automatically does min/max
+  // vst1_u8(out_data, vqmovun_s16(out0));
+  // vst1_u8(out_data + w, vqmovun_s16(out1));
+  // vst1_u8(out_data + 2*w, vqmovun_s16(out2));
+  // vst1_u8(out_data + 3*w, vqmovun_s16(out3));
+  // vst1_u8(out_data + 4*w, vqmovun_s16(out4));
+  // vst1_u8(out_data + 5*w, vqmovun_s16(out5));
+  // vst1_u8(out_data + 6*w, vqmovun_s16(out6));
+  // vst1_u8(out_data + 7*w, vqmovun_s16(out7));
+}
+
 
 
 // Keep original for dec
