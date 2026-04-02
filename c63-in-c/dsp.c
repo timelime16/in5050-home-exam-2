@@ -481,7 +481,7 @@ void dequant_idct_block_8x8(int16_t *in_data, int16_t *out_data,
 
 
 
-static inline void dct_quant_block_4x8_neon(
+void dct_quant_block_4x8_neon(
   float16x8_t b0, float16x8_t b1,
   float16x8_t b2, float16x8_t b3,
   float16x8_t q0, float16x8_t q1,
