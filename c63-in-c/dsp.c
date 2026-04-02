@@ -105,41 +105,30 @@ static inline float16x8_t set_dct_val(float16x8_t row, float16_t dct, int j)
 void dct_quant_block_8x8_neon(
   float16x8_t b0, float16x8_t b1, float16x8_t b2, float16x8_t b3, 
   float16x8_t b4, float16x8_t b5, float16x8_t b6, float16x8_t b7, 
+  float16x8_t q0, float16x8_t q1, float16x8_t q2, float16x8_t q3, 
+  float16x8_t q4, float16x8_t q5, float16x8_t q6, float16x8_t q7, 
+  float16x8x4_t dct1, float16x8x4_t dct2,
   int16_t *out_data, uint8_t *quant_tbl
 )
 {
-  // Variable declarations
-  float16x8_t buf0, buf1, buf2, buf3, buf4, buf5, buf6, buf7; // intermediate buffers
-  float16x8x4_t dct1, dct2; // lookup tables
   float16x8x2_t tmp0, tmp1, tmp2, tmp3; // tanspose - 16bit
   float32x4x2_t tmp4, tmp5, tmp6, tmp7; // transpose - 32 bit
-  float16x8x4_t out1, out2; // quantize
-  float16x8_t q0, q1, q2, q3, q4, q5, q6, q7;
-  float16x8_t rp0, rp1, rp2, rp3, rp4, rp5, rp6, rp7;
-  float16x8_t quart;
-
-  #pragma unroll
-  for (int i = 0; i < 4; ++i) 
-  {
-    dct1.val[i] = vld1q_f16(dctlookup_f16[i]);
-    dct2.val[i] = vld1q_f16(dctlookup_f16[i+4]);
-  }
   
   // Matrix multiplcation using row-order traversals
-  buf0 = row_mat_mul(b0, dct1, dct2);
-  buf1 = row_mat_mul(b1, dct1, dct2);
-  buf2 = row_mat_mul(b2, dct1, dct2);
-  buf3 = row_mat_mul(b3, dct1, dct2);
-  buf4 = row_mat_mul(b4, dct1, dct2);
-  buf5 = row_mat_mul(b5, dct1, dct2);
-  buf6 = row_mat_mul(b6, dct1, dct2);
-  buf7 = row_mat_mul(b7, dct1, dct2);
+  b0 = row_mat_mul(b0, dct1, dct2);
+  b1 = row_mat_mul(b1, dct1, dct2);
+  b2 = row_mat_mul(b2, dct1, dct2);
+  b3 = row_mat_mul(b3, dct1, dct2);
+  b4 = row_mat_mul(b4, dct1, dct2);
+  b5 = row_mat_mul(b5, dct1, dct2);
+  b6 = row_mat_mul(b6, dct1, dct2);
+  b7 = row_mat_mul(b7, dct1, dct2);
 
   // In-place transpose
-  tmp0 = vtrnq_f16(buf0, buf1);
-  tmp1 = vtrnq_f16(buf2, buf3);
-  tmp2 = vtrnq_f16(buf4, buf5);
-  tmp3 = vtrnq_f16(buf6, buf7);
+  tmp0 = vtrnq_f16(b0, b1);
+  tmp1 = vtrnq_f16(b2, b3);
+  tmp2 = vtrnq_f16(b4, b5);
+  tmp3 = vtrnq_f16(b6, b7);
   tmp4 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[0]), vreinterpretq_f32_f16(tmp1.val[0]));
   tmp5 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[1]), vreinterpretq_f32_f16(tmp1.val[1]));
   tmp6 = vtrnq_f32(vreinterpretq_f32_f16(tmp2.val[0]), vreinterpretq_f32_f16(tmp3.val[0]));
@@ -154,20 +143,20 @@ void dct_quant_block_8x8_neon(
   b7 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp5.val[1]), vget_high_f32(tmp7.val[1])));
 
   // One more time
-  buf0 = row_mat_mul(b0, dct1, dct2);
-  buf1 = row_mat_mul(b1, dct1, dct2);
-  buf2 = row_mat_mul(b2, dct1, dct2);
-  buf3 = row_mat_mul(b3, dct1, dct2);
-  buf4 = row_mat_mul(b4, dct1, dct2);
-  buf5 = row_mat_mul(b5, dct1, dct2);
-  buf6 = row_mat_mul(b6, dct1, dct2);
-  buf7 = row_mat_mul(b7, dct1, dct2);
+  b0 = row_mat_mul(b0, dct1, dct2);
+  b1 = row_mat_mul(b1, dct1, dct2);
+  b2 = row_mat_mul(b2, dct1, dct2);
+  b3 = row_mat_mul(b3, dct1, dct2);
+  b4 = row_mat_mul(b4, dct1, dct2);
+  b5 = row_mat_mul(b5, dct1, dct2);
+  b6 = row_mat_mul(b6, dct1, dct2);
+  b7 = row_mat_mul(b7, dct1, dct2);
 
   // In-place transpose
-  tmp0 = vtrnq_f16(buf0, buf1);
-  tmp1 = vtrnq_f16(buf2, buf3);
-  tmp2 = vtrnq_f16(buf4, buf5);
-  tmp3 = vtrnq_f16(buf6, buf7);
+  tmp0 = vtrnq_f16(b0, b1);
+  tmp1 = vtrnq_f16(b2, b3);
+  tmp2 = vtrnq_f16(b4, b5);
+  tmp3 = vtrnq_f16(b6, b7);
   tmp4 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[0]), vreinterpretq_f32_f16(tmp1.val[0]));
   tmp5 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[1]), vreinterpretq_f32_f16(tmp1.val[1]));
   tmp6 = vtrnq_f32(vreinterpretq_f32_f16(tmp2.val[0]), vreinterpretq_f32_f16(tmp3.val[0]));
@@ -194,6 +183,7 @@ void dct_quant_block_8x8_neon(
   b7 = vmulq_f16(b7, scale_factors_norm);
 
   // quantize
+  float16x8x4_t out1, out2;
   #pragma unroll
   for (int i = 0; i < 4; ++i) 
   {
@@ -229,34 +219,16 @@ void dct_quant_block_8x8_neon(
   }
 
   // Load tables
+  float16x8_t quart;
   quart = vdupq_n_f16(0.25f);
-  q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl)));
-  q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 8)));
-  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 2*8)));
-  q3 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 3*8)));
-  q4 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 4*8)));
-  q5 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 5*8)));
-  q6 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 6*8)));
-  q7 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 7*8)));
-
-  // recip
-  rp0 = vrecpeq_f16(q0); rp0 = vmulq_f16(vrecpsq_f16(q0, rp0), rp0);
-  rp1 = vrecpeq_f16(q1); rp1 = vmulq_f16(vrecpsq_f16(q1, rp1), rp1);
-  rp2 = vrecpeq_f16(q2); rp2 = vmulq_f16(vrecpsq_f16(q2, rp2), rp2);
-  rp3 = vrecpeq_f16(q3); rp3 = vmulq_f16(vrecpsq_f16(q3, rp3), rp3);
-  rp4 = vrecpeq_f16(q4); rp4 = vmulq_f16(vrecpsq_f16(q4, rp4), rp4);
-  rp5 = vrecpeq_f16(q5); rp5 = vmulq_f16(vrecpsq_f16(q5, rp5), rp5);
-  rp6 = vrecpeq_f16(q6); rp6 = vmulq_f16(vrecpsq_f16(q6, rp6), rp6);
-  rp7 = vrecpeq_f16(q7); rp7 = vmulq_f16(vrecpsq_f16(q7, rp7), rp7);
-
-  out1.val[0] = vmulq_f16(out1.val[0], vmulq_f16(quart, rp0));
-  out1.val[1] = vmulq_f16(out1.val[1], vmulq_f16(quart, rp1));
-  out1.val[2] = vmulq_f16(out1.val[2], vmulq_f16(quart, rp2));
-  out1.val[3] = vmulq_f16(out1.val[3], vmulq_f16(quart, rp3));
-  out2.val[0] = vmulq_f16(out2.val[0], vmulq_f16(quart, rp4));
-  out2.val[1] = vmulq_f16(out2.val[1], vmulq_f16(quart, rp5));
-  out2.val[2] = vmulq_f16(out2.val[2], vmulq_f16(quart, rp6));
-  out2.val[3] = vmulq_f16(out2.val[3], vmulq_f16(quart, rp7));
+  out1.val[0] = vmulq_f16(out1.val[0], vmulq_f16(quart, q0));
+  out1.val[1] = vmulq_f16(out1.val[1], vmulq_f16(quart, q1));
+  out1.val[2] = vmulq_f16(out1.val[2], vmulq_f16(quart, q2));
+  out1.val[3] = vmulq_f16(out1.val[3], vmulq_f16(quart, q3));
+  out2.val[0] = vmulq_f16(out2.val[0], vmulq_f16(quart, q4));
+  out2.val[1] = vmulq_f16(out2.val[1], vmulq_f16(quart, q5));
+  out2.val[2] = vmulq_f16(out2.val[2], vmulq_f16(quart, q6));
+  out2.val[3] = vmulq_f16(out2.val[3], vmulq_f16(quart, q7));
 
   // Store back to memory
   vst1q_s16(out_data, vcvtq_s16_f16(vrndnq_f16(out1.val[0])));

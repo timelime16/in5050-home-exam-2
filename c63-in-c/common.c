@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "dsp.h"
+#include "tables.h"
 
 void dequantize_idct_row_neon(int16_t *in_data, uint8_t *prediction, int w, int h,
     int y, uint8_t *out_data, uint8_t *quantization)
@@ -46,15 +47,51 @@ void dequantize_idct_neon(int16_t *in_data, uint8_t *prediction, uint32_t width,
   }
 }
 
+static inline float16x8_t load_row(uint8_t *in_data, uint8_t *prediction, int w, int x, int i) 
+{
+  // block[i*8+j] = ((int16_t)in_data[i*w+j+x] - prediction[i*w+j+x])
+  int16x8_t input, p;
+  input = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + i*w)));
+  p = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + i*w)));
+  return vcvtq_f16_s16(vsubq_s16(input, p));
+}
+
 void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
     int16_t *out_data, uint8_t *quantization)
 {
   int x;
 
-  int16x8_t in0, in1, in2, in3, in4, in5, in6, in7;
-  int16x8_t p0, p1, p2, p3, p4, p5, p6, p7;
-
   float16x8_t b0, b1, b2, b3, b4, b5, b6, b7;
+
+  float16x8_t q0, q1, q2, q3, q4, q5, q6, q7; // quant tbl
+
+  float16x8x4_t dct1, dct2; // dctlookup
+
+  q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization)));
+  q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 8)));
+  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 2*8)));
+  q3 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 3*8)));
+  q4 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 4*8)));
+  q5 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 5*8)));
+  q6 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 6*8)));
+  q7 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 7*8)));
+
+  // Need recirporcal
+  q0 = vmulq_f16(vrecpsq_f16(q0, vrecpeq_f16(q0)), vrecpeq_f16(q0));
+  q1 = vmulq_f16(vrecpsq_f16(q1, vrecpeq_f16(q1)), vrecpeq_f16(q1));
+  q2 = vmulq_f16(vrecpsq_f16(q2, vrecpeq_f16(q2)), vrecpeq_f16(q2));
+  q3 = vmulq_f16(vrecpsq_f16(q3, vrecpeq_f16(q3)), vrecpeq_f16(q3));
+  q4 = vmulq_f16(vrecpsq_f16(q4, vrecpeq_f16(q4)), vrecpeq_f16(q4));
+  q5 = vmulq_f16(vrecpsq_f16(q5, vrecpeq_f16(q5)), vrecpeq_f16(q5));
+  q6 = vmulq_f16(vrecpsq_f16(q6, vrecpeq_f16(q6)), vrecpeq_f16(q6));
+  q7 = vmulq_f16(vrecpsq_f16(q7, vrecpeq_f16(q7)), vrecpeq_f16(q7));
+
+  #pragma unroll
+  for (int i = 0; i < 4; ++i) 
+  { 
+    dct1.val[i] = vld1q_f16(dctlookup_f16[i]);
+    dct2.val[i] = vld1q_f16(dctlookup_f16[i+4]);
+  }
 
   /* Perform the DCT and quantization */
   for(x = 0; x < w; x += 8)
@@ -63,31 +100,21 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
     //    continous. This allows us to ignore stride in DCT/iDCT and other
     //    functions. */
 
-    // block[i*8+j] = ((int16_t)in_data[i*w+j+x] - prediction[i*w+j+x])
-    in0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x))); 
-    in1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + w)));
-    in2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 2*w)));
-    in3 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 3*w)));
-    in4 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 4*w)));
-    in5 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 5*w)));
-    in6 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 6*w)));
-    in7 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(in_data + x + 7*w)));
+    b0 = load_row(in_data, prediction, w, x, 0);
+    b1 = load_row(in_data, prediction, w, x, 1);
+    b2 = load_row(in_data, prediction, w, x, 2);
+    b3 = load_row(in_data, prediction, w, x, 3);
+    b4 = load_row(in_data, prediction, w, x, 4);
+    b5 = load_row(in_data, prediction, w, x, 5);
+    b6 = load_row(in_data, prediction, w, x, 6);
+    b7 = load_row(in_data, prediction, w, x, 7);
 
-    p0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x))); 
-    p1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + w)));
-    p2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 2*w)));
-    p3 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 3*w)));
-    p4 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 4*w)));
-    p5 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 5*w)));
-    p6 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 6*w)));
-    p7 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + 7*w)));
-
-    b0 = vcvtq_f16_s16(vsubq_s16(in0, p0)); b1 = vcvtq_f16_s16(vsubq_s16(in1, p1)); 
-    b2 = vcvtq_f16_s16(vsubq_s16(in2, p2)); b3 = vcvtq_f16_s16(vsubq_s16(in3, p3));
-    b4 = vcvtq_f16_s16(vsubq_s16(in4, p4)); b5 = vcvtq_f16_s16(vsubq_s16(in5, p5)); 
-    b6 = vcvtq_f16_s16(vsubq_s16(in6, p6)); b7 = vcvtq_f16_s16(vsubq_s16(in7, p7));
-
-    dct_quant_block_8x8_neon(b0, b1, b2, b3, b4, b5, b6, b7, out_data + x*8, quantization);
+    dct_quant_block_8x8_neon(
+      b0, b1, b2, b3, b4, b5, b6, b7,
+      q0, q1, q2, q3, q4, q5, q6, q7,
+      dct1, dct2, 
+      out_data + x*8, quantization
+    );
   }
 }
 
