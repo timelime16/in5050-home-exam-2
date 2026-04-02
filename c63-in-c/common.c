@@ -62,36 +62,18 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
   int x;
 
   float16x8_t b0, b1, b2, b3, b4, b5, b6, b7;
+  float16x8_t dct0, dct1, dct2, dct3, dct4, dct5, dct6, dct7; // dctlookup
 
-  float16x8_t q0, q1, q2, q3, q4, q5, q6, q7; // quant tbl
+  dct0 = vld1q_f16(dctlookup_f16[0]);
+  dct1 = vld1q_f16(dctlookup_f16[1]);
+  dct2 = vld1q_f16(dctlookup_f16[2]);
+  dct3 = vld1q_f16(dctlookup_f16[3]);
+  dct4 = vld1q_f16(dctlookup_f16[4]);
+  dct5 = vld1q_f16(dctlookup_f16[5]);
+  dct6 = vld1q_f16(dctlookup_f16[6]);
+  dct7 = vld1q_f16(dctlookup_f16[7]);
 
-  float16x8x4_t dct1, dct2; // dctlookup
-
-  q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization)));
-  q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 8)));
-  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 2*8)));
-  q3 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 3*8)));
-  q4 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 4*8)));
-  q5 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 5*8)));
-  q6 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 6*8)));
-  q7 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quantization + 7*8)));
-
-  // Need recirporcal
-  q0 = vmulq_f16(vrecpsq_f16(q0, vrecpeq_f16(q0)), vrecpeq_f16(q0));
-  q1 = vmulq_f16(vrecpsq_f16(q1, vrecpeq_f16(q1)), vrecpeq_f16(q1));
-  q2 = vmulq_f16(vrecpsq_f16(q2, vrecpeq_f16(q2)), vrecpeq_f16(q2));
-  q3 = vmulq_f16(vrecpsq_f16(q3, vrecpeq_f16(q3)), vrecpeq_f16(q3));
-  q4 = vmulq_f16(vrecpsq_f16(q4, vrecpeq_f16(q4)), vrecpeq_f16(q4));
-  q5 = vmulq_f16(vrecpsq_f16(q5, vrecpeq_f16(q5)), vrecpeq_f16(q5));
-  q6 = vmulq_f16(vrecpsq_f16(q6, vrecpeq_f16(q6)), vrecpeq_f16(q6));
-  q7 = vmulq_f16(vrecpsq_f16(q7, vrecpeq_f16(q7)), vrecpeq_f16(q7));
-
-  #pragma unroll
-  for (int i = 0; i < 4; ++i) 
-  { 
-    dct1.val[i] = vld1q_f16(dctlookup_f16[i]);
-    dct2.val[i] = vld1q_f16(dctlookup_f16[i+4]);
-  }
+  float16x8_t dct[8] = {dct0, dct1, dct2, dct3, dct4, dct5, dct6, dct7};
 
   /* Perform the DCT and quantization */
   for(x = 0; x < w; x += 8)
@@ -100,47 +82,18 @@ void dct_quantize_row(uint8_t *in_data, uint8_t *prediction, int w, int h,
     //    continous. This allows us to ignore stride in DCT/iDCT and other
     //    functions. */
 
-    // b0 = load_row(in_data, prediction, w, x, 0);
-    // b1 = load_row(in_data, prediction, w, x, 1);
-    // b2 = load_row(in_data, prediction, w, x, 2);
-    // b3 = load_row(in_data, prediction, w, x, 3);
-    // b4 = load_row(in_data, prediction, w, x, 4);
-    // b5 = load_row(in_data, prediction, w, x, 5);
-    // b6 = load_row(in_data, prediction, w, x, 6);
-    // b7 = load_row(in_data, prediction, w, x, 7);
+    b0 = load_row(in_data, prediction, w, x, 0);
+    b1 = load_row(in_data, prediction, w, x, 1);
+    b2 = load_row(in_data, prediction, w, x, 2);
+    b3 = load_row(in_data, prediction, w, x, 3);
+    b4 = load_row(in_data, prediction, w, x, 4);
+    b5 = load_row(in_data, prediction, w, x, 5);
+    b6 = load_row(in_data, prediction, w, x, 6);
+    b7 = load_row(in_data, prediction, w, x, 7);
 
-    // dct_quant_block_8x8_neon(
-    //   b0, b1, b2, b3, b4, b5, b6, b7,
-    //   q0, q1, q2, q3, q4, q5, q6, q7,
-    //   dct1, dct2, 
-    //   out_data + x*8, quantization
-    // );
+    float16x8_t block[8] = {b0, b1, b2, b3, b4, b5, b6, b7};
 
-    // top half
-    float16x8_t b0 = load_row(in_data, prediction, w, x, 0);
-    float16x8_t b1 = load_row(in_data, prediction, w, x, 1);
-    float16x8_t b2 = load_row(in_data, prediction, w, x, 2);
-    float16x8_t b3 = load_row(in_data, prediction, w, x, 3);
-
-    dct_quant_block_4x8_neon(
-      b0, b1, b2, b3,
-      q0, q1, q2, q3,
-      dct1, dct2,
-      out_data + x*8
-    );
-
-    // bottom half
-    float16x8_t b4 = load_row(in_data, prediction, w, x, 4);
-    float16x8_t b5 = load_row(in_data, prediction, w, x, 5);
-    float16x8_t b6 = load_row(in_data, prediction, w, x, 6);
-    float16x8_t b7 = load_row(in_data, prediction, w, x, 7);
-
-    dct_quant_block_4x8_neon(
-      b4, b5, b6, b7,
-      q4, q5, q6, q7,
-      dct1, dct2,
-      out_data + x*8 + 4*8
-    );
+    dct_quant_block_8x8_neon(block, dct, out_data + x*8, quantization);
   }
 }
 
