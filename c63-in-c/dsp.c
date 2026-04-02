@@ -93,7 +93,7 @@ static inline void zigzag_gather(float16x8_t *block)
   }
 }
 
-static inline quantize_block_neon(float16x8_t *block, uint8_t *quant_tbl) 
+static inline void quantize_block_neon(float16x8_t *block, uint8_t *quant_tbl) 
 {
   int i;
   float16x8_t q, rp;
