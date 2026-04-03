@@ -11,6 +11,6 @@ void dequant_idct_block_8x8(int16_t *in_data, int16_t *out_data,
     uint8_t *quant_tbl);
 
 void dequant_idct_block_8x8_neon(int16_t *in_data, uint8_t *out_data, uint8_t *prediction, uint8_t *quant_tbl, 
-  int w, float16x8_t *dct);
+  int x, int w, float16x8_t *dct);
 
 #endif  /* C63_DSP_H_ */
