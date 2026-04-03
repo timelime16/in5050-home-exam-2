@@ -42,6 +42,7 @@ void dequantize_idct_neon(int16_t *in_data, uint8_t *prediction, uint32_t width,
 {
   int y;
 
+  #pragma omp parallel for schedule(static)
   for (y = 0; y < height; y += 8)
   {
     dequantize_idct_row_neon(in_data+y*width, prediction+y*width, width, height, y,
@@ -214,6 +215,7 @@ void dequantize_idct(int16_t *in_data, uint8_t *prediction, uint32_t width,
 {
   int y;
 
+  #pragma omp parallel for schedule(static)
   for (y = 0; y < height; y += 8)
   {
     dequantize_idct_row(in_data+y*width, prediction+y*width, width, height, y,
