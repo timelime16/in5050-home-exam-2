@@ -78,7 +78,7 @@ static inline void zigzag_gather(float16x8_t *block)
     vst1q_f16(tmp + i*8, block[i]);
   }
 
-  #pragma unroll
+  #pragma unroll 8
   for (i = 0; i < 64; ++i)
   {
     uint8_t u = zigzag_U[i];
@@ -95,17 +95,38 @@ static inline void zigzag_gather(float16x8_t *block)
 
 static inline void quantize_block_neon(float16x8_t *block, uint8_t *quant_tbl) 
 {
-  int i;
-  float16x8_t q, rp;
+  float16x8_t q0, q1, q2, q3;
+  float16x8_t rp0, rp1, rp2, rp3;
 
-  #pragma unroll
-  for (i = 0; i < 8; ++i)
-  {
-    q = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + i*8)));
-    rp = vrecpeq_f16(q);
-    rp = vmulq_f16(vrecpsq_f16(q, rp), rp);
-    block[i] = vmulq_f16(vmulq_n_f16(block[i], 0.25f), rp);
-  }
+  q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl)));
+  q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 8)));
+  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 2*8)));
+  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 3*8)));
+
+  rp0 = vrecpeq_f16(q0);rp0 = vmulq_f16(vrecpsq_f16(q0, rp0), rp0);
+  rp1 = vrecpeq_f16(q1);rp1 = vmulq_f16(vrecpsq_f16(q1, rp1), rp1);
+  rp2 = vrecpeq_f16(q2);rp2 = vmulq_f16(vrecpsq_f16(q2, rp2), rp2);
+  rp3 = vrecpeq_f16(q3);rp3 = vmulq_f16(vrecpsq_f16(q3, rp3), rp3);
+
+  block[0] = vmulq_f16(vmulq_n_f16(block[0], 0.25f), rp0);
+  block[1] = vmulq_f16(vmulq_n_f16(block[1], 0.25f), rp1);
+  block[2] = vmulq_f16(vmulq_n_f16(block[2], 0.25f), rp2);
+  block[3] = vmulq_f16(vmulq_n_f16(block[3], 0.25f), rp3);
+
+  q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 4*8)));
+  q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 5*8)));
+  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 6*8)));
+  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 7*8)));
+
+  rp0 = vrecpeq_f16(q0);rp0 = vmulq_f16(vrecpsq_f16(q0, rp0), rp0);
+  rp1 = vrecpeq_f16(q1);rp1 = vmulq_f16(vrecpsq_f16(q1, rp1), rp1);
+  rp2 = vrecpeq_f16(q2);rp2 = vmulq_f16(vrecpsq_f16(q2, rp2), rp2);
+  rp3 = vrecpeq_f16(q3);rp3 = vmulq_f16(vrecpsq_f16(q3, rp3), rp3);
+
+  block[4] = vmulq_f16(vmulq_n_f16(block[4], 0.25f), rp0);
+  block[5] = vmulq_f16(vmulq_n_f16(block[5], 0.25f), rp1);
+  block[6] = vmulq_f16(vmulq_n_f16(block[6], 0.25f), rp2);
+  block[7] = vmulq_f16(vmulq_n_f16(block[7], 0.25f), rp3);
 }
 
 void dct_quant_block_8x8_neon(float16x8_t *block, float16x8_t *dct, int16_t *out_data, uint8_t *quant_tbl) 
@@ -153,6 +174,7 @@ static void dequantize_block_neon(float16_t *in_data, float16_t *out_data,
 {
   int zigzag;
 
+  #pragma unroll 8
   for (zigzag = 0; zigzag < 64; ++zigzag)
   {
     uint8_t u = zigzag_U[zigzag];
@@ -190,15 +212,27 @@ static inline float16x8_t foo(float16x8_t row, float16x8x4_t mat1, float16x8x4_t
 static inline void dequant_block_neon(float16x8_t *block, uint8_t *quant_tbl)
 {
   // out_data[v*8+u] = (float16_t) round((dct * quant_tbl[zigzag]) / 4.0);
-  int i;
-  float16x8_t q;
+  float16x8_t q0, q1, q2, q3;
 
-  #pragma unroll
-  for (i = 0; i < 8; ++i)
-  {
-    q = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + i*8)));
-    block[i] = vmulq_n_f16(vmulq_f16(block[i], q), 0.25f);
-  }
+  q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl)));
+  q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 8)));
+  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 2*8)));
+  q3 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 3*8)));
+
+  block[0] = vmulq_n_f16(vmulq_f16(block[0], q0), 0.25f);
+  block[1] = vmulq_n_f16(vmulq_f16(block[1], q1), 0.25f);
+  block[2] = vmulq_n_f16(vmulq_f16(block[2], q2), 0.25f);
+  block[3] = vmulq_n_f16(vmulq_f16(block[3], q3), 0.25f);
+
+  q0 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 4*8)));
+  q1 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 5*8)));
+  q2 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 6*8)));
+  q3 = vcvtq_f16_u16(vmovl_u8(vld1_u8(quant_tbl + 7*8)));
+
+  block[4] = vmulq_n_f16(vmulq_f16(block[5], q0), 0.25f);
+  block[5] = vmulq_n_f16(vmulq_f16(block[6], q1), 0.25f);
+  block[6] = vmulq_n_f16(vmulq_f16(block[7], q2), 0.25f);
+  block[7] = vmulq_n_f16(vmulq_f16(block[8], q3), 0.25f);
 }
 
 static inline void scatter_neon(float16x8_t *block)
@@ -212,7 +246,7 @@ static inline void scatter_neon(float16x8_t *block)
     vst1q_f16(tmp + i*8, block[i]);
   }
 
-  #pragma unroll
+  #pragma unroll 8
   for (i = 0; i < 64; ++i)
   {
     uint8_t u = zigzag_U[i];
@@ -227,22 +261,43 @@ static inline void scatter_neon(float16x8_t *block)
   }
 }
 
-static inline void dequant_store_neon(float16x8_t *block, uint8_t *out_data, uint8_t *prediction, int x, int w)
+static inline void dequant_store_neon(float16x8_t *block, uint8_t *out_data, uint8_t *prediction, int w)
 {
-  int i;
-  int16x8_t p;
+  int16x8_t p0, p1, p2, p3;
 
-  #pragma unroll
-  for (i = 0; i < 8; ++i) 
-  {
-    p = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + x + i*w)));
-    p = vaddq_s16(vcvtq_s16_f16(block[i]), p);
-    vst1_u8(out_data + i*w, vqmovun_s16(p));
-  }
+  p0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction)));
+  p1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + w)));
+  p2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + 2*w)));
+  p3 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + 3*w)));
+
+  p0 = vaddq_s16(vcvtq_s16_f16(block[0]), p0);
+  p1 = vaddq_s16(vcvtq_s16_f16(block[1]), p1);
+  p2 = vaddq_s16(vcvtq_s16_f16(block[2]), p2);
+  p3 = vaddq_s16(vcvtq_s16_f16(block[3]), p3);
+
+  vst1_u8(out_data, vqmovun_s16(p0));
+  vst1_u8(out_data + w, vqmovun_s16(p1));
+  vst1_u8(out_data + 2*w, vqmovun_s16(p2));
+  vst1_u8(out_data + 3*w, vqmovun_s16(p3));
+
+  p0 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + 4*w)));
+  p1 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + 5*w)));
+  p2 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + 6*w)));
+  p3 = vreinterpretq_s16_u16(vmovl_u8(vld1_u8(prediction + 7*w)));
+
+  p0 = vaddq_s16(vcvtq_s16_f16(block[4]), p0);
+  p1 = vaddq_s16(vcvtq_s16_f16(block[5]), p1);
+  p2 = vaddq_s16(vcvtq_s16_f16(block[6]), p2);
+  p3 = vaddq_s16(vcvtq_s16_f16(block[7]), p3);
+
+  vst1_u8(out_data + 4*w, vqmovun_s16(p0));
+  vst1_u8(out_data + 5*w, vqmovun_s16(p1));
+  vst1_u8(out_data + 6*w, vqmovun_s16(p2));
+  vst1_u8(out_data + 7*w, vqmovun_s16(p3));
 }
 
 void dequant_idct_block_8x8_neon(int16_t *in_data, uint8_t *out_data, uint8_t *prediction, uint8_t *quant_tbl, 
-  int x, int w, float16x8_t *dct)
+  int w, float16x8_t *dct)
 {
   int i;
   float16x8_t r0, r1, r2, r3, r4, r5, r6, r7;
@@ -285,7 +340,7 @@ void dequant_idct_block_8x8_neon(int16_t *in_data, uint8_t *out_data, uint8_t *p
   transpose_block_neon(block);
 
   // Clean up and store
-  dequant_store_neon(block, out_data, prediction, x, w);
+  dequant_store_neon(block, out_data, prediction, w);
   // int16_t tmp = block[i*8+j] + (int16_t)prediction[i*w+j+x];
   // int16x8_t out0, out1, out2, out3, out4, out5, out6, out7;
   // out0 = vaddq_s16(vcvtq_s16_f16(r0), p0);
