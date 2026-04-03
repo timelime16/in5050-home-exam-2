@@ -182,6 +182,7 @@ void c63_motion_compensate_neon(struct c63_common *cm)
   int mb_x, mb_y;
 
   /* Luma */
+  #pragma omp parallel for collapse(2) schedule(static)
   for (mb_y = 0; mb_y < cm->mb_rows; ++mb_y)
   {
     for (mb_x = 0; mb_x < cm->mb_cols; ++mb_x)
@@ -192,12 +193,21 @@ void c63_motion_compensate_neon(struct c63_common *cm)
   }
 
   /* Chroma */
+  #pragma omp parallel for collapse(2) schedule(static)
   for (mb_y = 0; mb_y < cm->mb_rows / 2; ++mb_y)
   {
     for (mb_x = 0; mb_x < cm->mb_cols / 2; ++mb_x)
     {
       mc_block_8x8_neon(cm, mb_x, mb_y, cm->curframe->predicted->U,
           cm->refframe->recons->U, U_COMPONENT);
+    }
+  }
+
+  #pragma omp parallel for collapse(2) schedule(static)
+  for (mb_y = 0; mb_y < cm->mb_rows / 2; ++mb_y)
+  {
+    for (mb_x = 0; mb_x < cm->mb_cols / 2; ++mb_x)
+    {
       mc_block_8x8_neon(cm, mb_x, mb_y, cm->curframe->predicted->V,
           cm->refframe->recons->V, V_COMPONENT);
     }
