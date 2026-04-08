@@ -24,6 +24,12 @@ set(CMAKE_C_FLAGS_DEBUG "-g -O1 -fno-tree-vectorize")
 set(CMAKE_BUILD_TYPE Debug)
 # set(CMAKE_BUILD_TYPE Release)
 
+# Enable gprof profiling
+set(PROFILING_FLAGS "-pg")
+
+add_compile_options(${PROFILING_FLAGS})
+add_link_options(${PROFILING_FLAGS})
+
 #
 # If this is a Tegra or something similar, set our processor subrevision.
 # On Mac, CMake adds arch flags by itself.
