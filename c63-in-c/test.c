@@ -152,7 +152,7 @@ int main(void)
         }
     }
 
-    float16_t out[8][8];
+    float16_t out[64];
     dct_2d(input, out);
 
     printf("Benchmark: \n");
@@ -160,7 +160,7 @@ int main(void)
     {
         for (j = 0; j < 8; ++j) 
         {
-            printf("%f ", out[i][j]);
+            printf("%f ", out[i*8+j]);
         }
         printf("\n");
     }
