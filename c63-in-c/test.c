@@ -160,20 +160,20 @@ int main(void)
     {
         for (j = 0; j < 8; ++j) 
         {
-            printf("%f ", input[i][j]);
+            printf("%f ", out[i][j]);
         }
         printf("\n");
     }
     printf("\n");
 
-
-    dct_neon(input, out);
+    float16_t out2[8][8];
+    dct_neon(input, out2);
     printf("Mine: \n");
     for (i = 0; i < 8; ++i)
     {
         for (j = 0; j < 8; ++j) 
         {
-            printf("%f ", input[i][j]);
+            printf("%f ", out2[i][j]);
         }
         printf("\n");
     }
