@@ -143,12 +143,12 @@ dct_neon(float16_t *input, float16_t *out)
 int main(void) 
 {
     int i, j;
-    float16_t input[8][8];
+    float16_t input[64];
     for (i = 0; i < 8; ++i) 
     {
         for (j = 0; j < 8; ++j)
         {
-            input[i][j] = (float16_t) j;
+            input[i*8+j] = (float16_t) j;
         }
     }
 
