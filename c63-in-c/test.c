@@ -166,14 +166,14 @@ int main(void)
     }
     printf("\n");
 
-    float16_t out2[8][8];
+    float16_t out2[64];
     dct_neon(input, out2);
     printf("Mine: \n");
     for (i = 0; i < 8; ++i)
     {
         for (j = 0; j < 8; ++j) 
         {
-            printf("%f ", out2[i][j]);
+            printf("%f ", out2[i*8+j]);
         }
         printf("\n");
     }
