@@ -73,7 +73,7 @@ dct_2d( const float16_t *in, float16_t *out )
 }
 
 static void 
-dct_neon(float16_t *input, float16x8_t *out)
+dct_neon(float16_t *input, float16_t *out)
 {
     float16x8_t dct0, dct1, dct2, dct3, dct4, dct5, dct6, dct7; // dctlookup
 
@@ -130,14 +130,14 @@ dct_neon(float16_t *input, float16x8_t *out)
     b7 = row_mat_mul(r7, dct);
     b7 = vaddq_f16(b7, row_mat_mul(r7, t));
 
-    vst1q_s16(out, b0);
-    vst1q_s16(out + 8, b1);
-    vst1q_s16(out + 2*8, b2);
-    vst1q_s16(out + 3*8, b3);
-    vst1q_s16(out + 4*8, b4);
-    vst1q_s16(out + 5*8, b5);
-    vst1q_s16(out + 6*8, b6);
-    vst1q_s16(out + 7*8, b7);
+    vst1q_f16(out, b0);
+    vst1q_f16(out + 8, b1);
+    vst1q_f16(out + 2*8, b2);
+    vst1q_f16(out + 3*8, b3);
+    vst1q_f16(out + 4*8, b4);
+    vst1q_f16(out + 5*8, b5);
+    vst1q_f16(out + 6*8, b6);
+    vst1q_f16(out + 7*8, b7);
 }
 
 int main(void) 
