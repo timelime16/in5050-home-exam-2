@@ -1,173 +1,179 @@
 #include <arm_neon.h>
 #include <stdio.h>
 
-static void dct_1d(float16_t *in_data, float16_t *out_data, float16_t *dctlookup)
+
+// Tables for arm neon instruction convenience
+float16_t dctlookup_f16[8][8] =
 {
-  int i, j;
+  {1.0f,  0.980785f,  0.923880f,  0.831470f,  0.707107f,  0.555570f,  0.382683f,  0.195090f, },
+  {1.0f,  0.831470f,  0.382683f, -0.195090f, -0.707107f, -0.980785f, -0.923880f, -0.555570f, },
+  {1.0f,  0.555570f, -0.382683f, -0.980785f, -0.707107f,  0.195090f,  0.923880f,  0.831470f, },
+  {1.0f,  0.195090f, -0.923880f, -0.555570f,  0.707107f,  0.831470f, -0.382683f, -0.980785f, },
+  {1.0f, -0.195090f, -0.923880f,  0.555570f,  0.707107f, -0.831470f, -0.382683f,  0.980785f, },
+  {1.0f, -0.555570f, -0.382683f,  0.980785f, -0.707107f, -0.195090f,  0.923880f, -0.831470f, },
+  {1.0f, -0.831470f,  0.382683f,  0.195090f, -0.707107f,  0.980785f, -0.923880f,  0.555570f, },
+  {1.0f, -0.980785f,  0.923880f, -0.831470f,  0.707107f, -0.555570f,  0.382683f, -0.195090f, },
+};
 
-  for (i = 0; i < 8; ++i)
-  {
-    float dct = 0;
+float16_t dctlookup_f16_T[8][8] = 
+{
+  {1.000000f,  1.000000f,  1.000000f,  1.000000f,  1.000000f,  1.000000f,  1.000000f,  1.000000f},
+  {0.980785f,  0.831470f,  0.555570f,  0.195090f, -0.195090f, -0.555570f, -0.831470f, -0.980785f}, 
+  {0.923880f,  0.382683f, -0.382683f, -0.923880f, -0.923880f, -0.382683f,  0.382683f,  0.923880f},
+  {0.831470f, -0.195090f, -0.980785f, -0.555570f,  0.555570f,  0.980785f,  0.195090f, -0.831470f},
+  {0.707107f, -0.707107f, -0.707107f,  0.707107f,  0.707107f, -0.707107f, -0.707107f,  0.707107f},
+  {0.555570f, -0.980785f,  0.195090f,  0.831470f, -0.831470f, -0.195090f,  0.980785f, -0.555570f}, 
+  {0.382683f, -0.923880f,  0.923880f, -0.382683f, -0.382683f,  0.923880f, -0.923880f,  0.382683f},
+  {0.195090f, -0.555570f,  0.831470f, -0.980785f,  0.980785f, -0.831470f,  0.555570f, -0.195090f},
+};
 
-    for (j = 0; j < 8; ++j)
-    {
-      dct += in_data[j] * dctlookup[j*8+i];
-    }
-
-    out_data[i] = dct;
-  }
-}
-
-static inline float16x8_t row_mat_mul(float16x8_t row, float16x8x4_t mat1, float16x8x4_t mat2) 
+static inline float16x8_t row_mat_mul(float16x8_t row, float16x8_t *dct) 
 {
   float16x8_t buf1, buf2;
 
   buf1 = vdupq_n_f16(0.0f);
   buf2 = vdupq_n_f16(0.0f);
 
-  #pragma unroll
-  for (int i = 0; i < 4; ++i) 
-  {
-    buf1 = vfmaq_laneq_f16(buf1, mat1.val[i], row, i);
-    buf2 = vfmaq_laneq_f16(buf2, mat2.val[i], row, i+4);
-  }
+  buf1 = vfmaq_laneq_f16(buf1, dct[0], row, 0);
+  buf2 = vfmaq_laneq_f16(buf2, dct[1], row, 1);
+
+  buf1 = vfmaq_laneq_f16(buf1, dct[2], row, 2);
+  buf2 = vfmaq_laneq_f16(buf2, dct[3], row, 3);
+
+  buf1 = vfmaq_laneq_f16(buf1, dct[4], row, 4);
+  buf2 = vfmaq_laneq_f16(buf2, dct[5], row, 5);
+
+  buf1 = vfmaq_laneq_f16(buf1, dct[6], row, 6);
+  buf2 = vfmaq_laneq_f16(buf2, dct[7], row, 7);
+
   return vaddq_f16(buf1, buf2);
 }
 
-static inline void transpose(float16_t *A) 
+static void
+dct_2d( const float16_t *in, float16_t *out )
 {
+    // Loop through all elements of the block
+    for ( int v = 0; v < 8; v++ )
+    {
+        for ( int u = 0; u < 8; u++ )
+        {
+            /* Compute the DCT */
+            float dct = 0;
+            for ( int y = 0; y < 8; y++ )
+            {
+                for ( int x = 0; x < 8; x++ )
+                {
+                    dct += in[y * 8 + x] * dctlookup_f16[x][u] * dctlookup_f16[y][v];
+                }
+            }
 
-    float16x8_t b0, b1, b2, b3, b4, b5, b6, b7;
-    float16x8x2_t tmp0, tmp1, tmp2, tmp3; // tanspose - 16bit
-    float32x4x2_t tmp4, tmp5, tmp6, tmp7; // transpose - 32 bit
-    b0 = vld1q_f16(A);
-    b1 = vld1q_f16(A+8);
-    b2 = vld1q_f16(A+2*8);
-    b3 = vld1q_f16(A+3*8);
-    b4 = vld1q_f16(A+4*8);
-    b5 = vld1q_f16(A+5*8);
-    b6 = vld1q_f16(A+6*8);
-    b7 = vld1q_f16(A+7*8);
-    tmp0 = vtrnq_f16(b0, b1);
-    tmp1 = vtrnq_f16(b2, b3);
-    tmp2 = vtrnq_f16(b4, b5);
-    tmp3 = vtrnq_f16(b6, b7);
-    tmp4 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[0]), vreinterpretq_f32_f16(tmp1.val[0]));
-    tmp5 = vtrnq_f32(vreinterpretq_f32_f16(tmp0.val[1]), vreinterpretq_f32_f16(tmp1.val[1]));
-    tmp6 = vtrnq_f32(vreinterpretq_f32_f16(tmp2.val[0]), vreinterpretq_f32_f16(tmp3.val[0]));
-    tmp7 = vtrnq_f32(vreinterpretq_f32_f16(tmp2.val[1]), vreinterpretq_f32_f16(tmp3.val[1]));
-    b0 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp4.val[0]), vget_low_f32(tmp6.val[0])));
-    b1 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp5.val[0]), vget_low_f32(tmp7.val[0])));
-    b2 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp4.val[1]), vget_low_f32(tmp6.val[1])));
-    b3 = vreinterpretq_f16_f32(vcombine_f32(vget_low_f32(tmp5.val[1]), vget_low_f32(tmp7.val[1])));
-    b4 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp4.val[0]), vget_high_f32(tmp6.val[0])));
-    b5 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp5.val[0]), vget_high_f32(tmp7.val[0])));
-    b6 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp4.val[1]), vget_high_f32(tmp6.val[1])));
-    b7 = vreinterpretq_f16_f32(vcombine_f32(vget_high_f32(tmp5.val[1]), vget_high_f32(tmp7.val[1])));
-    vst1q_f16(A, b0);
-    vst1q_f16(A+8, b1);
-    vst1q_f16(A+2*8, b2);
-    vst1q_f16(A+3*8, b3);
-    vst1q_f16(A+4*8, b4);
-    vst1q_f16(A+5*8, b5);
-    vst1q_f16(A+6*8, b6);
-    vst1q_f16(A+7*8, b7);
+            out[v * 8 + u] = dct;
+        }
+    }
 }
 
+static void 
+dct_neon(float16_t *input, float16x8_t *out)
+{
+    float16x8_t dct0, dct1, dct2, dct3, dct4, dct5, dct6, dct7; // dctlookup
+
+    dct0 = vld1q_f16(dctlookup_f16[0]);
+    dct1 = vld1q_f16(dctlookup_f16[1]);
+    dct2 = vld1q_f16(dctlookup_f16[2]);
+    dct3 = vld1q_f16(dctlookup_f16[3]);
+    dct4 = vld1q_f16(dctlookup_f16[4]);
+    dct5 = vld1q_f16(dctlookup_f16[5]);
+    dct6 = vld1q_f16(dctlookup_f16[6]);
+    dct7 = vld1q_f16(dctlookup_f16[7]);
+    float16x8_t dct[8] = {dct0, dct1, dct2, dct3, dct4, dct5, dct6, dct7};
+
+    float16x8_t t0, t1, t2, t3, t4, t5, t6, t7;
+
+    t0 = vld1q_f16(dctlookup_f16_T[0]);
+    t1 = vld1q_f16(dctlookup_f16_T[1]);
+    t2 = vld1q_f16(dctlookup_f16_T[2]);
+    t3 = vld1q_f16(dctlookup_f16_T[3]);
+    t4 = vld1q_f16(dctlookup_f16_T[4]);
+    t5 = vld1q_f16(dctlookup_f16_T[5]);
+    t6 = vld1q_f16(dctlookup_f16_T[6]);
+    t7 = vld1q_f16(dctlookup_f16_T[7]);
+
+    float16x8_t t[8] = {t0, t1, t2, t3, t4, t5, t6, t7};
+
+    float16x8_t r0, r1, r2, r3, r4, r5, r6, r7;
+
+    r0 = vld1q_f16(input);
+    r1 = vld1q_f16(input + 8);
+    r2 = vld1q_f16(input + 8*2);
+    r3 = vld1q_f16(input + 8*3);
+    r4 = vld1q_f16(input + 8*4);
+    r5 = vld1q_f16(input + 8*5);
+    r6 = vld1q_f16(input + 8*6);
+    r7 = vld1q_f16(input + 8*7);
+
+
+    float16x8_t b0, b1, b2, b3, b4, b5, b6, b7;
+    b0 = row_mat_mul(r0, dct);
+    b0 = vaddq_f16(b0, row_mat_mul(r0, t));
+    b1 = row_mat_mul(r1, dct);
+    b1 = vaddq_f16(b1, row_mat_mul(r1, t));
+    b2 = row_mat_mul(r2, dct);
+    b2 = vaddq_f16(b2, row_mat_mul(r2, t));
+    b3 = row_mat_mul(r3, dct);
+    b3 = vaddq_f16(b3, row_mat_mul(r3, t));
+    b4 = row_mat_mul(r4, dct);
+    b4 = vaddq_f16(b4, row_mat_mul(r4, t));
+    b5 = row_mat_mul(r5, dct);
+    b5 = vaddq_f16(b5, row_mat_mul(r5, t));
+    b6 = row_mat_mul(r6, dct);
+    b6 = vaddq_f16(b6, row_mat_mul(r6, t));
+    b7 = row_mat_mul(r7, dct);
+    b7 = vaddq_f16(b7, row_mat_mul(r7, t));
+
+    vst1q_s16(out, b0);
+    vst1q_s16(out + 8, b1);
+    vst1q_s16(out + 2*8, b2);
+    vst1q_s16(out + 3*8, b3);
+    vst1q_s16(out + 4*8, b4);
+    vst1q_s16(out + 5*8, b5);
+    vst1q_s16(out + 6*8, b6);
+    vst1q_s16(out + 7*8, b7);
+}
 
 int main(void) 
 {
-    // float16_t A[8*8] =
-    // {
-    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f,
-    // 1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,  8.0f
-    // };
-
-    // for (int i = 0; i < 64; ++i) 
-    // {
-    //     printf("%f ", (float)A[i]);
-    //     if ((i % 8) == 7) printf("\n");
-    // }
-    // printf("\n");
-
-    // transpose(A);
-
-    // for (int i = 0; i < 64; ++i) 
-    // {
-    //     printf("%f ", (float)A[i]);
-    //     if ((i % 8) == 7) printf("\n");
-    // }
-    // printf("\n");
-
-    float16_t A[8][8], B[64], C[8][8];
-    for (int i = 0; i < 8; ++i) 
+    int i, j;
+    float16_t input[8][8];
+    for (i = 0; i < 8; ++i) 
     {
-        for (int j = 0; j < 8; ++j) 
+        for (j = 0; j < 8; ++j)
         {
-            A[i][j] = i*8+j;
-            B[i*8+j] = i*8+j;
+            input[i][j] = (float16_t) j;
         }
     }
 
-    #pragma unroll
-    for (int i = 0; i < 8; ++i) 
+    float16_t out[8][8];
+    dct_2d(input, out);
+
+    printf("Benchmark: \n");
+    for (i = 0; i < 8; ++i)
     {
-        dct_1d(A[i], C[i], B);
-    }
-    printf("Correct answer:\n");
-    for (int i = 0; i < 8; ++i) 
-    {
-        for (int j = 0; j < 8; ++j) 
+        for (j = 0; j < 8; ++j) 
         {
-            printf("%f ", (float)C[i][j]);
+            printf("%f ", input[i][j]);
         }
         printf("\n");
     }
     printf("\n");
 
-    float16x8_t a0 = vld1q_f16(A[0]);
-    float16x8_t a1 = vld1q_f16(A[1]);
-    float16x8_t a2 = vld1q_f16(A[2]);
-    float16x8_t a3 = vld1q_f16(A[3]);
-    float16x8_t a4 = vld1q_f16(A[4]);
-    float16x8_t a5 = vld1q_f16(A[5]);
-    float16x8_t a6 = vld1q_f16(A[6]);
-    float16x8_t a7 = vld1q_f16(A[7]);
-    float16x8x4_t dct1, dct2;
-    #pragma unroll
-    for (int i = 0; i < 4; ++i) 
+
+    dct_neon(input, out);
+    printf("Mine: \n");
+    for (i = 0; i < 8; ++i)
     {
-        dct1.val[i] = vld1q_f16(B + i*8);
-        dct2.val[i] = vld1q_f16(B + (i+4)*8);
-    }
-    float16x8_t c0 = row_mat_mul(a0, dct1, dct2);
-    float16x8_t c1 = row_mat_mul(a1, dct1, dct2);
-    float16x8_t c2 = row_mat_mul(a2, dct1, dct2);
-    float16x8_t c3 = row_mat_mul(a3, dct1, dct2);
-    float16x8_t c4 = row_mat_mul(a4, dct1, dct2);
-    float16x8_t c5 = row_mat_mul(a5, dct1, dct2);
-    float16x8_t c6 = row_mat_mul(a6, dct1, dct2);
-    float16x8_t c7 = row_mat_mul(a7, dct1, dct2);
-    vst1q_f16(C[0], c0);
-    vst1q_f16(C[1], c1);
-    vst1q_f16(C[2], c2);
-    vst1q_f16(C[3], c3);
-    vst1q_f16(C[4], c4);
-    vst1q_f16(C[5], c5);
-    vst1q_f16(C[6], c6);
-    vst1q_f16(C[7], c7);
-    printf("My answer:\n");
-    for (int i = 0; i < 8; ++i) 
-    {
-        for (int j = 0; j < 8; ++j) 
+        for (j = 0; j < 8; ++j) 
         {
-            printf("%f ", (float)C[i][j]);
+            printf("%f ", input[i][j]);
         }
         printf("\n");
     }
