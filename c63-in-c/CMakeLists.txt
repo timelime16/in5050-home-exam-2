@@ -20,7 +20,8 @@ set(CMAKE_C_FLAGS_RELEASE "-O1 -fno-tree-vectorize")
 set(CMAKE_C_FLAGS_DEBUG "-g -O1 -fno-tree-vectorize")
 
 # Debug compiles with -g or equivalent for debugging.
-# Change to Release for good speed.target_link_libraries(c63 OpenMP::OpenMP_C)
+# Change to Release for good speed.
+target_link_libraries(c63 OpenMP::OpenMP_C)
 # set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_BUILD_TYPE Release)
 
