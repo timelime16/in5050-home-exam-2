@@ -9,6 +9,8 @@ project(Codec63
 	DESCRIPTION "CMake configuration file for Codec63 in C"
         LANGUAGES C)
 
+find_package(OpenMP REQUIRED)
+
 # Use the C standard from 2011. No effect on Windows (Visual Studio ignores
 # the standards anyway).
 set(CMAKE_C_STANDARD 11)
