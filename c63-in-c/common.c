@@ -41,7 +41,7 @@ void dequantize_idct_neon(int16_t *in_data, uint8_t *prediction, uint32_t width,
     uint32_t height, uint8_t *out_data, uint8_t *quantization)
 {
   int y;
-
+  
   #pragma omp parallel for schedule(static)
   for (y = 0; y < height; y += 8)
   {
