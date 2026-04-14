@@ -20,15 +20,15 @@ set(CMAKE_C_FLAGS_RELEASE "-O1 -fno-tree-vectorize")
 set(CMAKE_C_FLAGS_DEBUG "-g -O1 -fno-tree-vectorize")
 
 # Debug compiles with -g or equivalent for debugging.
-# Change to Release for good speed.
-set(CMAKE_BUILD_TYPE Debug)
-# set(CMAKE_BUILD_TYPE Release)
+# Change to Release for good speed.target_link_libraries(c63 OpenMP::OpenMP_C)
+# set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
-# Enable gprof profiling
-set(PROFILING_FLAGS "-pg")
+# # Enable gprof profiling
+# set(PROFILING_FLAGS "-pg")
 
-add_compile_options(${PROFILING_FLAGS})
-add_link_options(${PROFILING_FLAGS})
+# add_compile_options(${PROFILING_FLAGS})
+# add_link_options(${PROFILING_FLAGS})
 
 #
 # If this is a Tegra or something similar, set our processor subrevision.
@@ -62,4 +62,3 @@ add_executable(c63pred
                c63dec.c c63.h)
 target_link_libraries(c63pred c63 m)
 target_compile_options(c63pred PUBLIC -DC63_PRED)
-
