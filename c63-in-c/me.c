@@ -117,6 +117,7 @@ void c63_motion_estimate(struct c63_common *cm)
   int mb_x, mb_y;
 
   /* Luma */
+  #pragma omp parallel for collapse(2) schedule(static)
   for (mb_y = 0; mb_y < cm->mb_rows; ++mb_y)
   {
     for (mb_x = 0; mb_x < cm->mb_cols; ++mb_x)
@@ -127,12 +128,20 @@ void c63_motion_estimate(struct c63_common *cm)
   }
 
   /* Chroma */
+  #pragma omp parallel for collapse(2) schedule(static)
   for (mb_y = 0; mb_y < cm->mb_rows / 2; ++mb_y)
   {
     for (mb_x = 0; mb_x < cm->mb_cols / 2; ++mb_x)
     {
       me_block_8x8(cm, mb_x, mb_y, cm->curframe->orig->U,
           cm->refframe->recons->U, U_COMPONENT);
+    }
+  }
+
+  for (mb_y = 0; mb_y < cm->mb_rows / 2; ++mb_y)
+  {
+    for (mb_x = 0; mb_x < cm->mb_cols / 2; ++mb_x)
+    {
       me_block_8x8(cm, mb_x, mb_y, cm->curframe->orig->V,
           cm->refframe->recons->V, V_COMPONENT);
     }
